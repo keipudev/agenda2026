@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agenda Pessoal 2026 - Estilo Google Calendar</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <i class="fa-solid fa-calendar-check"></i>
+                <h1>Agenda 2026</h1>
+            </div>
+            
+            <button class="btn-primary new-event-btn" id="btn-novo-evento">
+                <i class="fa-solid fa-plus"></i> Criar Evento
+            </button>
+            
+            <nav class="sidebar-nav">
+                <button class="nav-item active" data-tab="calendario">
+                    <i class="fa-solid fa-calendar-days"></i> Calendário
+                </button>
+                <button class="nav-item" data-tab="dia">
+                    <i class="fa-solid fa-clock"></i> Grade de Horas
+                </button>
+                <button class="nav-item" data-tab="anotacoes">
+                    <i class="fa-solid fa-pen"></i> Anotações
+                </button>
+            </nav>
+            
+            <div class="mini-calendar">
+                <div class="mini-header">
+                    <span id="mini-mes-atual"></span>
+                </div>
+                <div class="mini-dias" id="mini-calendario"></div>
+            </div>
+        </aside>
+        
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Aba Calendário -->
+            <section id="calendario" class="tab-content active">
+                <div class="calendar-header">
+                    <div class="month-nav">
+                        <button id="mes-anterior" class="nav-btn"><i class="fa-solid fa-chevron-left"></i></button>
+                        <h2 id="titulo-mes">Janeiro 2026</h2>
+                        <button id="mes-proximo" class="nav-btn"><i class="fa-solid fa-chevron-right"></i></button>
+                    </div>
+                    <button class="today-btn" id="btn-hoje">Hoje</button>
+                </div>
+                
+                <div class="calendar-wrapper">
+                    <div class="calendario-mes" id="calendario-mes"></div>
+                </div>
+                
+                <div class="legendas">
+                    <span class="legenda"><span class="ponto"></span> Dia com eventos</span>
+                </div>
+            </section>
+            
+            <!-- Aba Dia (Grade de Horas) -->
+            <section id="dia" class="tab-content">
+                <div class="day-header">
+                    <input type="date" id="data-selecionada" class="date-picker">
+                    <h2 id="titulo-dia">Segunda-feira, 1 de Janeiro</h2>
+                </div>
+                
+                <div class="hours-grid" id="hours-grid">
+                    <!-- Gerado dinamicamente com horários 0h-23h -->
+                </div>
+            </section>
+            
+            <!-- Aba Anotações -->
+            <section id="anotacoes" class="tab-content">
+                <div class="notes-header">
+                    <h2>Anotações do Evento</h2>
+                </div>
+                
+                <div class="notes-layout">
+                    <div class="event-form-container">
+                        <form id="form-evento" class="event-form">
+                            <h3 id="form-titulo">Novo Evento</h3>
+                            
+                            <div class="form-group">
+                                <label for="evento-data">Data</label>
+                                <input type="date" id="evento-data" required>
+                            </div>
+                            
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="evento-hora">Hora</label>
+                                    <select id="evento-hora" required>
+                                        <option value="">Selecione hora</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="evento-duracao">Duração</label>
+                                    <select id="evento-duracao">
+                                        <option value="1">30 min</option>
+                                        <option value="2">1 hora</option>
+                                        <option value="4">2 horas</option>
+                                        <option value="8">4 horas</option>
+                                        <option value="12">6 horas</option>
+                                        <option value="24">12 horas</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="evento-titulo">Título *</label>
+                                <input type="text" id="evento-titulo" placeholder="Adicionar título" required>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="evento-descricao">Descrição</label>
+                                <textarea id="evento-descricao" placeholder="Adicionar descrição"></textarea>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="evento-cor">Cor</label>
+                                <div class="color-picker">
+                                    <input type="color" id="evento-cor" value="#4285f4">
+                                    <div class="color-presets">
+                                        <span class="color-preset" style="background: #4285f4" data-color="#4285f4"></span>
+                                        <span class="color-preset" style="background: #34a853" data-color="#34a853"></span>
+                                        <span class="color-preset" style="background: #fbbc04" data-color="#fbbc04"></span>
+                                        <span class="color-preset" style="background: #ea4335" data-color="#ea4335"></span>
+                                        <span class="color-preset" style="background: #9a40fc" data-color="#9a40fc"></span>
+                                        <span class="color-preset" style="background: #00bcd4" data-color="#00bcd4"></span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="form-actions">
+                                <button type="button" id="btn-cancelar-evento" class="btn-secondary">Cancelar</button>
+                                <button type="submit" id="btn-salvar-evento" class="btn-primary">Salvar</button>
+                            </div>
+                        </form>
+                    </div>
+                    
+                    <div class="events-list-container">
+                        <h3>Eventos do Dia</h3>
+                        <div id="lista-eventos" class="events-list">
+                            <p class="no-events">Nenhum evento neste dia</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+    
+    <!-- Modal -->
+    <div id="modal-evento" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Detalhes do Evento</h3>
+                <span class="close">&times;</span>
+            </div>
+            <div class="modal-body" id="modal-body"></div>
+        </div>
+    </div>
+    
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
