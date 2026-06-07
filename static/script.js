@@ -21,46 +21,35 @@ document.addEventListener('DOMContentLoaded', () => {
     inicializarAplicacao();
 });
 
+// Função principal de inicialização
 async function inicializarAplicacao() {
     console.log('inicializarAplicacao() executando...');
     await carregarMeses();
     irParaHoje();
-    
-    // Definir data de hoje como padrão
-    document.getElementById('data-selecionada').valueAsDate = new Date();
-    document.getElementById('evento-data').valueAsDate = new Date();
-    
-    // Renderizar calendário inicial
-    renderizarCalendario();
-    
-    // Renderizar grade de horas do dia
-    renderizarGradeHoras();
-    
-    // Renderizar lista de eventos
-    await carregarEventosDia();
-    
-    // Preencher seletor de horas
     preencherSeletorHoras();
-    
-    // Atualizar título do dia
-    atualizarTituloDia();
-    
-    // Configurar todos os eventos
     configurarEventos();
+    configurarRotinas();
+    configurarDarkMode();
 }
 
+// Configura todos os event listeners
 function configurarEventos() {
     console.log('configurarEventos() executando...');
     
     // Navegação de abas
-    document.querySelectorAll('.tab-btn, .nav-item').forEach(btn => {
+    document.querySelectorAll('.nav-item').forEach(btn => {
         btn.addEventListener('click', (e) => {
-            document.querySelectorAll('.tab-btn, .nav-item').forEach(b => b.classList.remove('active'));
+            const clickedBtn = e.currentTarget || btn;
+            document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
             document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
             
-            e.target.classList.add('active');
-            const tabId = e.target.dataset.tab;
+            clickedBtn.classList.add('active');
+            const tabId = clickedBtn.dataset.tab;
             document.getElementById(tabId).classList.add('active');
+            
+            if (tabId === 'rotinas') {
+                carregarRotinas();
+            }
         });
     });
 
@@ -83,24 +72,25 @@ function configurarEventos() {
         estadoApp.dataSelecionada = e.target.value;
         document.getElementById('evento-data').value = e.target.value;
         atualizarTituloDia();
-        carregarEventosDia();
         renderizarGradeHoras();
+        carregarEventosDia();
     });
 
     // Botão novo evento
     document.getElementById('btn-novo-evento').addEventListener('click', () => {
-        // Ativa aba de anotações
-        document.querySelectorAll('.tab-btn, .nav-item').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
         document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
         document.querySelector('[data-tab="anotacoes"]').classList.add('active');
         document.getElementById('anotacoes').classList.add('active');
-        
         limparFormulario();
     });
 
     // Formulário de evento
     document.getElementById('btn-salvar-evento').addEventListener('click', salvarEvento);
     document.getElementById('btn-cancelar-evento').addEventListener('click', limparFormulario);
+    
+    // Prevenir submit do formulário
+    document.getElementById('form-evento').addEventListener('submit', (e) => e.preventDefault());
 
     // Modal
     document.querySelector('.close').addEventListener('click', fecharModal);
@@ -112,6 +102,7 @@ function configurarEventos() {
     });
 }
 
+// Carrega os meses da API
 async function carregarMeses() {
     try {
         const response = await fetch('/api/meses');
@@ -122,7 +113,8 @@ async function carregarMeses() {
     }
 }
 
-function irParaHoje() {
+// Navega para o dia de hoje
+async function irParaHoje() {
     console.log('irParaHoje() executando...');
     const hoje = new Date();
     const dataHojeStr = hoje.toISOString().split('T')[0];
@@ -142,15 +134,15 @@ function irParaHoje() {
     // Atualizar campos de data
     document.getElementById('data-selecionada').value = dataHojeStr;
     document.getElementById('evento-data').value = dataHojeStr;
-    document.getElementById('evento-data').valueAsDate = new Date();
     
     // Atualizar interface
     atualizarTituloDia();
-    carregarEventosDia();
-    renderizarGradeHoras();
     renderizarCalendario();
+    renderizarGradeHoras();
+    await carregarEventosDia();
 }
 
+// Atualiza o título do dia selecionado
 function atualizarTituloDia() {
     const dataStr = estadoApp.dataSelecionada || document.getElementById('data-selecionada').value;
     if (!dataStr) return;
@@ -159,24 +151,25 @@ function atualizarTituloDia() {
     const diaSemana = nomesDiasCompletos[data.getDay()];
     const dia = data.getDate();
     const mes = nomesMeses[data.getMonth()];
-    const ano = data.getFullYear();
     
     document.getElementById('titulo-dia').textContent = `${diaSemana}, ${dia} de ${mes}`;
 }
 
+// Renderiza o calendário do mês atual
 function renderizarCalendario() {
     const mes = estadoApp.meses[estadoApp.mesAtual];
     if (!mes) return;
 
-    // Atualizar título do mês
-    document.getElementById('titulo-mes').textContent = 
-        `${mes.nome_mes} ${mes.ano}`;
+    document.getElementById('titulo-mes').textContent = `${mes.nome_mes} ${mes.ano}`;
+    
+    // Data de hoje para marcar
+    const hoje = new Date();
+    const hojeStr = hoje.toISOString().split('T')[0];
 
-    // Montar grid
     const container = document.getElementById('calendario-mes');
     container.innerHTML = '';
 
-    // Adicionar cabeçalho com dias da semana (Dom a Sab)
+    // Cabeçalho com dias da semana (Dom a Sab)
     diasSemana.forEach(dia => {
         const div = document.createElement('div');
         div.className = 'dia-semana';
@@ -184,7 +177,7 @@ function renderizarCalendario() {
         container.appendChild(div);
     });
 
-    // Adicionar dias do mês
+    // Dias do mês
     mes.dias.forEach(dia => {
         const div = document.createElement('div');
         div.className = 'dia';
@@ -194,6 +187,11 @@ function renderizarCalendario() {
         } else {
             div.textContent = dia.dia;
             
+            // Marcar o dia de hoje
+            if (dia.data === hojeStr) {
+                div.classList.add('hoje');
+            }
+            
             if (dia.tem_eventos) {
                 div.classList.add('com-eventos');
             }
@@ -202,14 +200,13 @@ function renderizarCalendario() {
                 div.classList.add('selecionado');
             }
 
-            // Clique no dia do calendário
             div.addEventListener('click', () => {
                 estadoApp.dataSelecionada = dia.data;
                 document.getElementById('data-selecionada').value = dia.data;
                 document.getElementById('evento-data').value = dia.data;
                 atualizarTituloDia();
-                carregarEventosDia();
                 renderizarGradeHoras();
+                carregarEventosDia();
                 renderizarCalendario();
             });
         }
@@ -218,6 +215,7 @@ function renderizarCalendario() {
     });
 }
 
+// Renderiza a grade de horas do dia
 function renderizarGradeHoras() {
     const container = document.getElementById('hours-grid');
     container.innerHTML = '';
@@ -239,19 +237,18 @@ function renderizarGradeHoras() {
         bloco.appendChild(horaEventos);
         container.appendChild(bloco);
     }
-
-    // Carregar eventos do dia
-    carregarEventosDia();
 }
 
+// Carrega os eventos do dia selecionado
 async function carregarEventosDia() {
     try {
         const response = await fetch(`/api/eventos/${estadoApp.dataSelecionada}`);
         const eventos = await response.json();
 
-        // Limpar grade anterior
+        // Limpar grade
         for (let h = 0; h <= 23; h++) {
-            document.getElementById(`hora-${h}`).innerHTML = '';
+            const el = document.getElementById(`hora-${h}`);
+            if (el) el.innerHTML = '';
         }
 
         // Adicionar eventos às horas correspondentes
@@ -274,7 +271,6 @@ async function carregarEventosDia() {
             }
         });
 
-        // Atualizar lista de eventos
         renderizarListaEventos(eventos);
 
     } catch (erro) {
@@ -282,6 +278,7 @@ async function carregarEventosDia() {
     }
 }
 
+// Renderiza a lista de eventos do dia
 function renderizarListaEventos(eventos) {
     const container = document.getElementById('lista-eventos');
     container.innerHTML = '';
@@ -307,11 +304,11 @@ function renderizarListaEventos(eventos) {
     });
 }
 
+// Preenche o seletor de horas com opções de 00:00 a 23:00
 function preencherSeletorHoras() {
     const select = document.getElementById('evento-hora');
     select.innerHTML = '<option value="">Selecione hora</option>';
     
-    // Horas de 00:00 até 23:00
     for (let h = 0; h <= 23; h++) {
         const option = document.createElement('option');
         option.value = String(h).padStart(2, '0') + ':00';
@@ -320,6 +317,7 @@ function preencherSeletorHoras() {
     }
 }
 
+// Salva um novo evento
 async function salvarEvento() {
     const data = document.getElementById('evento-data').value;
     const hora = document.getElementById('evento-hora').value;
@@ -335,14 +333,12 @@ async function salvarEvento() {
 
     try {
         if (estadoApp.eventoEmEdicao) {
-            // Atualizar evento
             await fetch(`/api/evento/${estadoApp.eventoEmEdicao}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ titulo, descricao, duracao, cor })
             });
         } else {
-            // Criar novo evento
             await fetch('/api/evento', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -350,7 +346,6 @@ async function salvarEvento() {
             });
         }
 
-        // Recarregar dados
         await carregarMeses();
         await carregarEventosDia();
         renderizarCalendario();
@@ -362,6 +357,7 @@ async function salvarEvento() {
     }
 }
 
+// Limpa o formulário de evento
 function limparFormulario() {
     document.getElementById('evento-titulo').value = '';
     document.getElementById('evento-descricao').value = '';
@@ -370,6 +366,7 @@ function limparFormulario() {
     estadoApp.eventoEmEdicao = null;
 }
 
+// Abre o modal com detalhes do evento
 async function abrirDetalhesEvento(evento) {
     estadoApp.eventoEmEdicao = evento.id;
 
@@ -418,6 +415,7 @@ async function abrirDetalhesEvento(evento) {
     modal.classList.add('active');
 }
 
+// Atualiza evento pelo modal
 async function atualizarEventoModal() {
     const titulo = document.getElementById('modal-titulo').value;
     const descricao = document.getElementById('modal-descricao').value;
@@ -434,7 +432,6 @@ async function atualizarEventoModal() {
         await carregarMeses();
         await carregarEventosDia();
         renderizarCalendario();
-        renderizarGradeHoras();
         fecharModal();
 
     } catch (erro) {
@@ -443,6 +440,7 @@ async function atualizarEventoModal() {
     }
 }
 
+// Deleta evento pelo modal
 async function deletarEventoModal(id) {
     if (confirm('Tem certeza que deseja deletar este evento?')) {
         try {
@@ -451,7 +449,6 @@ async function deletarEventoModal(id) {
             await carregarMeses();
             await carregarEventosDia();
             renderizarCalendario();
-            renderizarGradeHoras();
             fecharModal();
 
         } catch (erro) {
@@ -461,7 +458,171 @@ async function deletarEventoModal(id) {
     }
 }
 
+// Fecha o modal
 function fecharModal() {
     document.getElementById('modal-evento').classList.remove('active');
     estadoApp.eventoEmEdicao = null;
+}
+
+// Dark mode toggle
+function configurarDarkMode() {
+    const toggle = document.getElementById('theme-toggle');
+    const currentTheme = localStorage.getItem('theme') || 'light';
+    
+    document.documentElement.setAttribute('data-theme', currentTheme);
+    toggle.innerHTML = currentTheme === 'dark' ? '<i class="fa-solid fa-sun"></i>' : '<i class="fa-solid fa-moon"></i>';
+    
+    toggle.addEventListener('click', () => {
+        const theme = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', theme);
+        localStorage.setItem('theme', theme);
+        toggle.innerHTML = theme === 'dark' ? '<i class="fa-solid fa-sun"></i>' : '<i class="fa-solid fa-moon"></i>';
+    });
+}
+
+// ========== ROTINAS ==========
+function configurarRotinas() {
+    preencherSeletorHorasRotina();
+    
+    document.getElementById('form-rotina').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        await salvarRotina();
+    });
+}
+
+function preencherSeletorHorasRotina() {
+    const select = document.getElementById('rotina-hora');
+    select.innerHTML = '<option value="">Selecione hora</option>';
+    
+    for (let h = 0; h <= 23; h++) {
+        const option = document.createElement('option');
+        option.value = String(h).padStart(2, '0') + ':00';
+        option.textContent = String(h).padStart(2, '0') + ':00';
+        select.appendChild(option);
+    }
+}
+
+async function carregarRotinas() {
+    try {
+        const response = await fetch('/api/rotinas');
+        const rotinas = await response.json();
+        
+        const container = document.getElementById('lista-rotinas');
+        
+        if (rotinas.length === 0) {
+            container.innerHTML = '<p class="no-events">Nenhuma rotina cadastrada</p>';
+            return;
+        }
+        
+        container.innerHTML = '';
+        
+        rotinas.forEach(r => {
+            const item = document.createElement('div');
+            item.className = 'rotina-item';
+            item.style.borderLeftColor = r.cor;
+            
+            const diasNomes = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sab'];
+            const diasSelecionados = JSON.parse(r.dias_semana).map(d => diasNomes[d]).join(', ');
+            
+            item.innerHTML = `
+                <div class="rotina-item-titulo">${r.titulo}</div>
+                <div class="rotina-item-info">${r.descricao || ''}</div>
+                <div class="rotina-item-info">${diasSelecionados} às ${r.hora_inicio}</div>
+                <div class="rotina-actions">
+                    <button class="btn-primary" onclick="gerarEventosRotina(${r.id})">Gerar Eventos</button>
+                    <button class="btn-secondary" onclick="deletarRotina(${r.id})">Excluir</button>
+                </div>
+            `;
+            
+            container.appendChild(item);
+        });
+    } catch (erro) {
+        console.error('Erro ao carregar rotinas:', erro);
+    }
+}
+
+async function salvarRotina() {
+    const titulo = document.getElementById('rotina-titulo').value;
+    const descricao = document.getElementById('rotina-descricao').value;
+    const cor = document.getElementById('rotina-cor').value;
+    const hora_inicio = document.getElementById('rotina-hora').value;
+    const duracao = document.getElementById('rotina-duracao').value;
+    const data_inicio = document.getElementById('rotina-data-inicio').value;
+    const data_fim = document.getElementById('rotina-data-fim').value;
+    
+    const diasSemana = [];
+    document.querySelectorAll('.weekday-chk input[type="checkbox"]').forEach(cb => {
+        if (cb.checked) {
+            diasSemana.push(parseInt(cb.value));
+        }
+    });
+    
+    if (!titulo || diasSemana.length === 0 || !data_inicio) {
+        alert('Preenchimento obrigatório: Título, dias da semana e data início');
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/rotina', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                titulo, descricao, cor, dias_semana: diasSemana,
+                hora_inicio, duracao, data_inicio, data_fim: data_fim || null
+            })
+        });
+        
+        if (response.ok) {
+            limparFormularioRotina();
+            carregarRotinas();
+        } else {
+            const erro = await response.json();
+            alert(erro.error || 'Erro ao criar rotina');
+        }
+    } catch (erro) {
+        console.error('Erro ao salvar rotina:', erro);
+        alert('Erro ao salvar rotina');
+    }
+}
+
+async function gerarEventosRotina(id) {
+    try {
+        const response = await fetch(`/api/rotina/${id}/gerar`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({})
+        });
+        
+        const resultado = await response.json();
+        alert(`Gerados ${resultado.eventos_criados} eventos`);
+        await carregarMeses();
+        await carregarEventosDia();
+        renderizarCalendario();
+    } catch (erro) {
+        console.error('Erro ao gerar eventos:', erro);
+        alert('Erro ao gerar eventos');
+    }
+}
+
+async function deletarRotina(id) {
+    if (confirm('Tem certeza que deseja deletar esta rotina?')) {
+        try {
+            await fetch(`/api/rotina/${id}`, { method: 'DELETE' });
+            carregarRotinas();
+        } catch (erro) {
+            console.error('Erro ao deletar rotina:', erro);
+            alert('Erro ao deletar rotina');
+        }
+    }
+}
+
+function limparFormularioRotina() {
+    document.getElementById('rotina-titulo').value = '';
+    document.getElementById('rotina-descricao').value = '';
+    document.getElementById('rotina-cor').value = '#4285f4';
+    document.getElementById('rotina-hora').value = '';
+    document.getElementById('rotina-duracao').value = '2';
+    document.getElementById('rotina-data-inicio').value = '';
+    document.getElementById('rotina-data-fim').value = '';
+    document.querySelectorAll('.weekday-chk input[type="checkbox"]').forEach(cb => cb.checked = false);
 }

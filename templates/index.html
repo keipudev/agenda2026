@@ -14,6 +14,9 @@
             <div class="sidebar-header">
                 <i class="fa-solid fa-calendar-check"></i>
                 <h1>Agenda 2026</h1>
+                <button id="theme-toggle" title="Alternar tema" style="margin-left: auto; background: none; border: none; cursor: pointer; font-size: 20px; color: var(--text-secondary);">
+                    <i class="fa-solid fa-moon"></i>
+                </button>
             </div>
             
             <button class="btn-primary new-event-btn" id="btn-novo-evento">
@@ -29,6 +32,9 @@
                 </button>
                 <button class="nav-item" data-tab="anotacoes">
                     <i class="fa-solid fa-pen"></i> Anotações
+                </button>
+                <button class="nav-item" data-tab="rotinas">
+                    <i class="fa-solid fa-repeat"></i> Rotinas
                 </button>
             </nav>
             
@@ -146,6 +152,99 @@
                         <h3>Eventos do Dia</h3>
                         <div id="lista-eventos" class="events-list">
                             <p class="no-events">Nenhum evento neste dia</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- Aba Rotinas -->
+            <section id="rotinas" class="tab-content">
+                <div class="notes-header">
+                    <h2>Rotinas</h2>
+                </div>
+                
+                <div class="notes-layout">
+                    <div class="event-form-container">
+                        <form id="form-rotina" class="event-form">
+                            <h3>Nova Rotina</h3>
+                            
+                            <div class="form-group">
+                                <label for="rotina-titulo">Título *</label>
+                                <input type="text" id="rotina-titulo" placeholder="Adicionar título" required>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="rotina-descricao">Descrição</label>
+                                <textarea id="rotina-descricao" placeholder="Adicionar descrição"></textarea>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label>Cor</label>
+                                <div class="color-picker">
+                                    <input type="color" id="rotina-cor" value="#4285f4">
+                                    <div class="color-presets">
+                                        <span class="color-preset" style="background: #4285f4" data-color="#4285f4"></span>
+                                        <span class="color-preset" style="background: #34a853" data-color="#34a853"></span>
+                                        <span class="color-preset" style="background: #fbbc04" data-color="#fbbc04"></span>
+                                        <span class="color-preset" style="background: #ea4335" data-color="#ea4335"></span>
+                                        <span class="color-preset" style="background: #9a40fc" data-color="#9a40fc"></span>
+                                        <span class="color-preset" style="background: #00bcd4" data-color="#00bcd4"></span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="rotina-hora">Hora Início</label>
+                                    <select id="rotina-hora" required>
+                                        <option value="">Selecione hora</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="rotina-duracao">Duração</label>
+                                    <select id="rotina-duracao">
+                                        <option value="1">30 min</option>
+                                        <option value="2" selected>1 hora</option>
+                                        <option value="4">2 horas</option>
+                                        <option value="8">4 horas</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label>Dias da Semana</label>
+                                <div class="weekdays-selector">
+                                    <label class="weekday-chk"><input type="checkbox" value="0"> Dom</label>
+                                    <label class="weekday-chk"><input type="checkbox" value="1"> Seg</label>
+                                    <label class="weekday-chk"><input type="checkbox" value="2"> Ter</label>
+                                    <label class="weekday-chk"><input type="checkbox" value="3"> Qua</label>
+                                    <label class="weekday-chk"><input type="checkbox" value="4"> Qui</label>
+                                    <label class="weekday-chk"><input type="checkbox" value="5"> Sex</label>
+                                    <label class="weekday-chk"><input type="checkbox" value="6"> Sab</label>
+                                </div>
+                            </div>
+                            
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="rotina-data-inicio">Data Início</label>
+                                    <input type="date" id="rotina-data-inicio" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="rotina-data-fim">Data Fim</label>
+                                    <input type="date" id="rotina-data-fim">
+                                </div>
+                            </div>
+                            
+                            <div class="form-actions">
+                                <button type="submit" class="btn-primary">Criar Rotina</button>
+                            </div>
+                        </form>
+                    </div>
+                    
+                    <div class="events-list-container">
+                        <h3>Minhas Rotinas</h3>
+                        <div id="lista-rotinas" class="events-list">
+                            <p class="no-events">Nenhuma rotina cadastrada</p>
                         </div>
                     </div>
                 </div>
