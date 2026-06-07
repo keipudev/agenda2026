@@ -976,7 +976,14 @@ body {
     border-radius: 4px;
 }
 
-/* Dark mode overrides for rotinas */
 [data-theme="dark"] .rotina-item:hover {
     background: #3c4043;
+}
+
+.tem-rotinas {
+    background: #e8f0fe;
+}
+
+[data-theme="dark"] .tem-rotinas {
+    background: #3a4756;
 }

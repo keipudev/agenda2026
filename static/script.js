@@ -196,6 +196,10 @@ function renderizarCalendario() {
                 div.classList.add('com-eventos');
             }
 
+            if (dia.tem_rotinas) {
+                div.classList.add('tem-rotinas');
+            }
+
             if (dia.data === estadoApp.dataSelecionada) {
                 div.classList.add('selecionado');
             }

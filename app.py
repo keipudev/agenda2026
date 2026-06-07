@@ -330,7 +330,37 @@ def get_meses():
     # Pega todos os eventos para saber quais dias têm eventos
     cursor.execute('SELECT DISTINCT data FROM eventos')
     datas_com_eventos = set(row[0] for row in cursor.fetchall())
+    
+    # Pega todas as rotinas ativas para calcular dias com rotinas
+    cursor.execute('SELECT * FROM rotinas WHERE ativa = 1')
+    rotinas = cursor.fetchall()
     conn.close()
+    
+    # Calcula datas que têm rotinas ativas
+    datas_com_rotinas = set()
+    for rotina in rotinas:
+        rotina = dict(rotina)
+        dias_semana = json.loads(rotina['dias_semana'])
+        
+        try:
+            data_inicio = datetime.strptime(rotina['data_inicio'], '%Y-%m-%d')
+            data_fim = rotina['data_fim']
+            if data_fim:
+                data_fim = datetime.strptime(data_fim, '%Y-%m-%d')
+            else:
+                data_fim = datetime(2026, 12, 31)
+        except (ValueError, TypeError):
+            continue
+        
+        atual = data_inicio
+        while atual <= data_fim:
+            # Converter: 0=Dom (dias_semana) -> 6 (weekday), 1=Seg -> 0, etc
+            dow_em_js = atual.weekday()
+            dow_em_rotina = (dow_em_js + 1) % 7
+            
+            if dow_em_rotina in dias_semana:
+                datas_com_rotinas.add(atual.strftime('%Y-%m-%d'))
+            atual += timedelta(days=1)
     
     meses = []
     hoje = datetime(2026, 1, 1)
@@ -357,11 +387,14 @@ def get_meses():
         # Dias do mês
         for d in range(1, num_dias + 1):
             data_str = primeiro_dia.replace(day=d).strftime('%Y-%m-%d')
-            dias.append({
+            dia_info = {
                 'dia': d,
                 'data': data_str,
                 'tem_eventos': data_str in datas_com_eventos
-            })
+            }
+            if data_str in datas_com_rotinas:
+                dia_info['tem_rotinas'] = True
+            dias.append(dia_info)
         
         meses.append({
             'mes': primeiro_dia.strftime('%Y-%m'),
