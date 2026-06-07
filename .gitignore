@@ -1,0 +1,10 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Banco de dados (backup antes)
+database/*.db
+
+# Ambiente
+.env
