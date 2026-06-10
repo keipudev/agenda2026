@@ -159,7 +159,7 @@ def deletar_evento(id):
     return jsonify({'status': 'deletado'})
 
 # Rotas API para Rotinas
-@app.route('/api/rotinas', methods=['GET'])
+@app.route('/api/rotinas')
 def get_rotinas():
     """Retorna todas as rotinas"""
     conn = get_db()
@@ -171,6 +171,48 @@ def get_rotinas():
     conn.close()
     
     return jsonify(rotinas)
+
+@app.route('/api/rotinas/<data>')
+def get_rotinas_do_dia(data):
+    """Retorna rotinas ativas para um dia específico"""
+    try:
+        datetime.strptime(data, '%Y-%m-%d')
+    except ValueError:
+        return jsonify({'error': 'Data inválida'}), 400
+    
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    cursor.execute('SELECT * FROM rotinas WHERE ativa = 1')
+    rotinas = cursor.fetchall()
+    conn.close()
+    
+    data_ref = datetime.strptime(data, '%Y-%m-%d')
+    dia_semana = (data_ref.weekday() + 1) % 7
+    
+    rotinas_do_dia = []
+    for rotina in rotinas:
+        rotina = dict(rotina)
+        dias_semana = json.loads(rotina['dias_semana'])
+        
+        if dia_semana not in dias_semana:
+            continue
+        
+        data_inicio = datetime.strptime(rotina['data_inicio'], '%Y-%m-%d')
+        data_fim = rotina['data_fim']
+        if data_fim:
+            data_fim = datetime.strptime(data_fim, '%Y-%m-%d')
+        else:
+            data_fim = None
+        
+        if data_fim and data_ref > data_fim:
+            continue
+        if data_ref < data_inicio:
+            continue
+        
+        rotinas_do_dia.append(rotina)
+    
+    return jsonify(rotinas_do_dia)
 
 @app.route('/api/rotina', methods=['POST'])
 def criar_rotina():
