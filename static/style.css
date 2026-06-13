@@ -412,6 +412,30 @@ body {
     border-radius: var(--radius-lg);
     box-shadow: var(--shadow-soft);
     border: 1px solid var(--border);
+    flex: 1;
+    min-height: 0;
+    max-height: calc(100vh - 140px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+}
+
+.hours-grid::-webkit-scrollbar {
+    width: 10px;
+}
+
+.hours-grid::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.hours-grid::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 999px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+}
+
+#dia {
+    gap: 16px;
 }
 
 .bloco-hora {
@@ -443,6 +467,23 @@ body {
     padding: 7px 10px;
     position: relative;
     min-height: 52px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.hora-eventos:hover {
+    background: var(--hover-bg);
+}
+
+.grade-hint {
+    min-height: auto;
+}
+
+.grade-hint-content {
+    color: var(--text-secondary);
+    font-size: 12px;
+    display: flex;
+    align-items: center;
 }
 
 .evento-card {
@@ -460,6 +501,55 @@ body {
 .evento-card:hover {
     transform: translateX(3px);
     box-shadow: 0 6px 18px rgba(0,0,0,0.10);
+}
+
+.rotina-card {
+    background: var(--card-bg);
+    border-left: 3px solid var(--primary);
+    padding: 7px 11px;
+    border-radius: var(--radius-sm);
+    box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+    margin-bottom: 3px;
+}
+
+.rotina-card:hover {
+    transform: translateX(3px);
+    box-shadow: 0 6px 18px rgba(0,0,0,0.10);
+}
+
+.rotina-card-titulo {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 2px;
+}
+
+.rotina-card-desc,
+.rotina-card-info,
+.rotina-card-horario {
+    font-size: 11px;
+    color: var(--text-secondary);
+    margin-top: 2px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 220px;
+}
+
+.rotina-card-horario {
+    color: var(--primary);
+    font-weight: 600;
+}
+
+.modal-intro {
+    background: var(--primary-soft);
+    color: var(--text-primary);
+    border-radius: var(--radius-md);
+    padding: 12px 14px;
+    margin-bottom: 16px;
+    font-weight: 600;
 }
 
 .evento-titulo {
