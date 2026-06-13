@@ -293,6 +293,57 @@ def deletar_rotina(id):
     
     return jsonify({'status': 'deletado'})
 
+@app.route('/api/rotinas', methods=['DELETE'])
+def deletar_todas_rotinas():
+    """Deleta todas as rotinas"""
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    cursor.execute('DELETE FROM rotinas')
+    
+    conn.commit()
+    conn.close()
+    
+    return jsonify({'status': 'todas_deletadas'})
+
+@app.route('/api/rotinas/batch', methods=['POST'])
+def criar_rotinas_batch():
+    """Cria múltiplas rotinas de uma vez"""
+    data = request.json or {}
+    rotinas = data.get('rotinas', [])
+    
+    if not rotinas:
+        return jsonify({'error': 'Nenhuma rotina fornecida'}), 400
+    
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    ids_criados = []
+    for rotina in rotinas:
+        if not rotina.get('titulo') or not rotina.get('dias_semana'):
+            continue
+        
+        cursor.execute('''
+            INSERT INTO rotinas (titulo, descricao, cor, dias_semana, hora_inicio, duracao, data_inicio, data_fim, ativa)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (
+            rotina['titulo'],
+            rotina.get('descricao', ''),
+            rotina.get('cor', '#4285f4'),
+            json.dumps(rotina.get('dias_semana', [])),
+            rotina.get('hora_inicio', '09:00'),
+            rotina.get('duracao', 2),
+            rotina.get('data_inicio', datetime.now().strftime('%Y-%m-%d')),
+            rotina.get('data_fim') or None,
+            1
+        ))
+        ids_criados.append(cursor.lastrowid)
+    
+    conn.commit()
+    conn.close()
+    
+    return jsonify({'ids': ids_criados, 'status': 'sucesso'})
+
 @app.route('/api/rotina/<int:id>/gerar', methods=['POST'])
 def gerar_eventos_rotina(id):
     """Gera eventos a partir de uma rotina"""

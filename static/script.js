@@ -32,8 +32,10 @@ async function inicializarAplicacao() {
     await carregarMeses();
     irParaHoje();
     preencherSeletorHoras();
+    preencherSeletorHorasRotinaDia();
     configurarEventos();
     configurarRotinas();
+    configurarRotinaDiaForm();
     configurarDarkMode();
 }
 
@@ -376,27 +378,28 @@ function renderizarRotinaDia(data) {
     
     if (!estadoApp.rotinasDoDia || estadoApp.rotinasDoDia.length === 0) {
         container.innerHTML = '<p class="no-events">Nenhuma rotina neste dia</p>';
-        return;
+    } else {
+        container.innerHTML = '';
+        estadoApp.rotinasDoDia.forEach(rotina => {
+            const item = document.createElement('div');
+            item.className = 'rotina-dia-item';
+            item.style.borderLeftColor = rotina.cor;
+
+            const diasNomes = [];
+            JSON.parse(rotina.dias_semana).forEach(d => diasNomes.push(nomesDiasCompletos[d] || ''));
+
+            item.innerHTML = `
+                <div class="rotina-dia-item-titulo">${rotina.titulo}</div>
+                ${rotina.descricao ? `<div class="rotina-dia-item-info">${rotina.descricao}</div>` : ''}
+                <div class="rotina-dia-item-info">${diasNomes.join(', ')}</div>
+                <div class="rotina-dia-item-horario">Das ${rotina.hora_inicio} - ${buscarFimHorario(rotina.hora_inicio, rotina.duracao)}</div>
+            `;
+
+            container.appendChild(item);
+        });
     }
     
-    container.innerHTML = '';
-    estadoApp.rotinasDoDia.forEach(rotina => {
-        const item = document.createElement('div');
-        item.className = 'rotina-dia-item';
-        item.style.borderLeftColor = rotina.cor;
-
-        const diasNomes = [];
-        JSON.parse(rotina.dias_semana).forEach(d => diasNomes.push(nomesDiasCompletos[d] || ''));
-
-        item.innerHTML = `
-            <div class="rotina-dia-item-titulo">${rotina.titulo}</div>
-            ${rotina.descricao ? `<div class="rotina-dia-item-info">${rotina.descricao}</div>` : ''}
-            <div class="rotina-dia-item-info">${diasNomes.join(', ')}</div>
-            <div class="rotina-dia-item-horario">Das ${rotina.hora_inicio} - ${buscarFimHorario(rotina.hora_inicio, rotina.duracao)}</div>
-        `;
-
-        container.appendChild(item);
-    });
+    updateRotinaDiaFormState(data);
 }
 
 function buscarFimHorario(inicio, duracao) {
@@ -406,6 +409,71 @@ function buscarFimHorario(inicio, duracao) {
     const hFinal = Math.floor(totalMin / 60) % 24;
     const mFinal = totalMin % 60;
     return `${String(hFinal).padStart(2, '0')}:${String(mFinal).padStart(2, '0')}`;
+}
+
+function toggleRotinaDiaForm() {
+    const form = document.getElementById('form-evento-rotina-dia');
+    const btn = document.getElementById('rotina-dia-toggle');
+    const isHidden = form.style.display === 'none';
+    form.style.display = isHidden ? 'block' : 'none';
+    if (isHidden) {
+        btn.innerHTML = '<i class="fa-solid fa-chevron-up"></i> Ocultar';
+    } else {
+        btn.innerHTML = '<i class="fa-solid fa-plus"></i> Adicionar Evento';
+    }
+}
+
+function updateRotinaDiaFormState(data) {
+    const form = document.getElementById('form-evento-rotina-dia');
+    const btn = document.getElementById('rotina-dia-toggle');
+    if (!form || !btn) return;
+    
+    form.style.display = 'none';
+    btn.innerHTML = '<i class="fa-solid fa-plus"></i> Adicionar Evento';
+    
+    document.getElementById('rotina-dia-titulo').value = '';
+    document.getElementById('rotina-dia-descricao').value = '';
+    document.getElementById('rotina-dia-duracao').value = '2';
+    document.getElementById('rotina-dia-data').value = data || '';
+}
+
+async function salvarEventoRotinaDia(e) {
+    e.preventDefault();
+    
+    const data = document.getElementById('rotina-dia-data').value;
+    const hora = document.getElementById('rotina-dia-hora').value;
+    const titulo = document.getElementById('rotina-dia-titulo').value;
+    const descricao = document.getElementById('rotina-dia-descricao').value;
+    const duracao = document.getElementById('rotina-dia-duracao').value;
+    
+    if (!data || !hora || !titulo) {
+        alert('Preenchimento obrigatório: Data, Hora e Título');
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/evento', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ data, hora, titulo, descricao, duracao, cor: '#3498db' })
+        });
+        
+        if (!response.ok) {
+            const erro = await response.json().catch(() => ({}));
+            alert(erro.error || 'Erro ao salvar evento');
+            return;
+        }
+        
+        await carregarMeses();
+        await carregarEventosDia();
+        await carregarRotinaDia(data);
+        renderizarCalendario();
+        updateRotinaDiaFormState(data);
+        
+    } catch (erro) {
+        console.error('Erro ao salvar evento:', erro);
+        alert('Erro ao salvar evento');
+    }
 }
 
 function formatarData(dataStr) {
@@ -754,6 +822,38 @@ function configurarDarkMode() {
 }
 
 // ========== ROTINAS ==========
+function preencherSeletorHorasRotinaDia() {
+    const selects = document.querySelectorAll('#rotina-dia-hora');
+    selects.forEach(select => {
+        if (select.options.length > 0) return;
+        select.innerHTML = '<option value="">Hora</option>';
+        for (let h = 0; h <= 23; h++) {
+            const option = document.createElement('option');
+            option.value = String(h).padStart(2, '0') + ':00';
+            option.textContent = String(h).padStart(2, '0') + ':00';
+            select.appendChild(option);
+        }
+    });
+}
+
+function configurarRotinaDiaForm() {
+    const toggleBtn = document.getElementById('rotina-dia-toggle');
+    const form = document.getElementById('form-evento-rotina-dia');
+    
+    if (toggleBtn) {
+        toggleBtn.addEventListener('click', () => toggleRotinaDiaForm());
+    }
+    
+    if (form) {
+        form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            salvarEventoRotinaDia(e);
+        });
+    }
+    
+    preencherSeletorHorasRotinaDia();
+}
+
 function configurarRotinas() {
     preencherSeletorHorasRotina();
     
@@ -761,6 +861,26 @@ function configurarRotinas() {
         e.preventDefault();
         await salvarRotina();
     });
+    
+    document.getElementById('btn-cancelar-rotina').addEventListener('click', () => {
+        cancelarEdicaoRotina();
+    });
+    
+    const btnLote = document.getElementById('btn-lote-rotina');
+    const btnDeletarTodas = document.getElementById('btn-deletar-todas-rotinas');
+    
+    if (btnLote) {
+        btnLote.addEventListener('click', () => abrirBatchRotina());
+    }
+    
+    if (btnDeletarTodas) {
+        btnDeletarTodas.addEventListener('click', () => deletarTodasRotinas());
+    }
+    
+    const btnSalvarLote = document.getElementById('btn-salvar-lote-rotina');
+    if (btnSalvarLote) {
+        btnSalvarLote.addEventListener('click', () => salvarLoteRotinas());
+    }
 }
 
 function preencherSeletorHorasRotina() {
@@ -800,10 +920,12 @@ async function carregarRotinas() {
             item.innerHTML = `
                 <div class="rotina-item-titulo">${r.titulo}</div>
                 <div class="rotina-item-info">${r.descricao || ''}</div>
-                <div class="rotina-item-info">${diasSelecionados} às ${r.hora_inicio}</div>
+                <div class="rotina-item-info">${diasSelecionados} às ${r.hora_inicio} (${r.duracao}h)</div>
+                <div class="rotina-item-info">${r.data_inicio}${r.data_fim ? ' até ' + r.data_fim : ''}</div>
                 <div class="rotina-actions">
-                    <button class="btn-primary" onclick="gerarEventosRotina(${r.id})">Gerar Eventos</button>
-                    <button class="btn-secondary" onclick="deletarRotina(${r.id})">Excluir</button>
+                    <button class="btn-primary btn-sm" onclick="editarRotina(${r.id})"><i class="fa-solid fa-pen"></i> Editar</button>
+                    <button class="btn-secondary btn-sm" onclick="gerarEventosRotina(${r.id})"><i class="fa-solid fa-calendar-plus"></i> Gerar</button>
+                    <button class="btn-secondary btn-sm danger" onclick="deletarRotina(${r.id})"><i class="fa-solid fa-trash"></i></button>
                 </div>
             `;
             
@@ -812,6 +934,49 @@ async function carregarRotinas() {
     } catch (erro) {
         console.error('Erro ao carregar rotinas:', erro);
     }
+}
+
+window.editarRotina = async function(id) {
+    try {
+        const response = await fetch('/api/rotinas');
+        const rotinas = await response.json();
+        const rotina = rotinas.find(r => r.id === id);
+        
+        if (!rotina) {
+            alert('Rotina não encontrada');
+            return;
+        }
+        
+        document.getElementById('rotina-titulo').value = rotina.titulo;
+        document.getElementById('rotina-descricao').value = rotina.descricao || '';
+        document.getElementById('rotina-cor').value = rotina.cor;
+        document.getElementById('rotina-hora').value = rotina.hora_inicio;
+        document.getElementById('rotina-duracao').value = rotina.duracao;
+        document.getElementById('rotina-data-inicio').value = rotina.data_inicio;
+        document.getElementById('rotina-data-fim').value = rotina.data_fim || '';
+        
+        const diasSemana = JSON.parse(rotina.dias_semana);
+        document.querySelectorAll('.weekday-chk input[type="checkbox"]').forEach(cb => {
+            cb.checked = diasSemana.includes(parseInt(cb.value));
+        });
+        
+        document.getElementById('btn-salvar-rotina').textContent = 'Atualizar';
+        document.getElementById('btn-cancelar-rotina').style.display = 'inline-flex';
+        
+        window.editarRotinaId = id;
+        
+        document.getElementById('rotina-titulo').focus();
+    } catch (erro) {
+        console.error('Erro ao carregar rotina para edição:', erro);
+        alert('Erro ao carregar rotina');
+    }
+}
+
+window.cancelarEdicaoRotina = function() {
+    limparFormularioRotina();
+    document.getElementById('btn-salvar-rotina').textContent = 'Criar Rotina';
+    document.getElementById('btn-cancelar-rotina').style.display = 'none';
+    window.editarRotinaId = null;
 }
 
 async function salvarRotina() {
@@ -836,25 +1001,191 @@ async function salvarRotina() {
     }
     
     try {
-        const response = await fetch('/api/rotina', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                titulo, descricao, cor, dias_semana: diasSemana,
-                hora_inicio, duracao, data_inicio, data_fim: data_fim || null
-            })
-        });
+        const idEdicao = window.editarRotinaId;
         
-        if (response.ok) {
-            limparFormularioRotina();
-            carregarRotinas();
+        if (idEdicao) {
+            await fetch(`/api/rotina/${idEdicao}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    titulo, descricao, cor, dias_semana: diasSemana,
+                    hora_inicio, duracao, data_inicio, data_fim: data_fim || null
+                })
+            });
+            
+            window.editarRotinaId = null;
+            document.getElementById('btn-salvar-rotina').textContent = 'Criar Rotina';
+            document.getElementById('btn-cancelar-rotina').style.display = 'none';
         } else {
-            const erro = await response.json();
-            alert(erro.error || 'Erro ao criar rotina');
+            await fetch('/api/rotina', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    titulo, descricao, cor, dias_semana: diasSemana,
+                    hora_inicio, duracao, data_inicio, data_fim: data_fim || null
+                })
+            });
         }
+        
+        limparFormularioRotina();
+        carregarRotinas();
     } catch (erro) {
         console.error('Erro ao salvar rotina:', erro);
         alert('Erro ao salvar rotina');
+    }
+}
+
+window.deletarTodasRotinas = async function() {
+    if (!confirm('Tem certeza que deseja deletar TODAS as rotinas? Esta ação não pode ser desfeita.')) {
+        return;
+    }
+    
+    try {
+        await fetch('/api/rotinas', { method: 'DELETE' });
+        carregarRotinas();
+        limparFormularioRotina();
+        document.getElementById('btn-salvar-rotina').textContent = 'Criar Rotina';
+        document.getElementById('btn-cancelar-rotina').style.display = 'none';
+        window.editarRotinaId = null;
+    } catch (erro) {
+        console.error('Erro ao deletar rotinas:', erro);
+        alert('Erro ao deletar rotinas');
+    }
+}
+
+window.abrirBatchRotina = function() {
+    const section = document.getElementById('rotinas-batch-section');
+    section.style.display = section.style.display === 'none' ? 'block' : 'none';
+    
+    if (section.style.display === 'none') {
+        document.getElementById('batch-rotinas-container').innerHTML = '';
+        return;
+    }
+    
+    adicionarCampoRotinaLote();
+    adicionarCampoRotinaLote();
+}
+
+window.adicionarCampoRotinaLote = function() {
+    const container = document.getElementById('batch-rotinas-container');
+    const index = container.children.length;
+    
+    const div = document.createElement('div');
+    div.className = 'batch-rotina-item';
+    div.style.cssText = 'background: var(--hover-bg); padding: 12px; border-radius: 8px; margin-bottom: 10px; border-left: 3px solid var(--primary);';
+    
+    div.innerHTML = `
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <strong style="font-size: 12px; color: var(--text-primary);">Rotina ${index + 1}</strong>
+            <button type="button" class="btn-secondary btn-sm danger" onclick="this.closest('.batch-rotina-item').remove()"><i class="fa-solid fa-times"></i></button>
+        </div>
+        <div class="form-row" style="grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px;">
+            <div class="form-group compact">
+                <label style="font-size: 10px; color: var(--text-secondary);">Título *</label>
+                <input type="text" class="batch-titulo" placeholder="Título" required>
+            </div>
+            <div class="form-group compact">
+                <label style="font-size: 10px; color: var(--text-secondary);">Dias</label>
+                <select class="batch-dia" style="width: 100%; padding: 6px; border-radius: 6px; border: 1px solid var(--border); background: var(--event-bg); color: var(--text-primary); font-size: 11px;">
+                    <option value="0">Dom</option>
+                    <option value="1">Seg</option>
+                    <option value="2">Ter</option>
+                    <option value="3">Qua</option>
+                    <option value="4">Qui</option>
+                    <option value="5">Sex</option>
+                    <option value="6">Sab</option>
+                </select>
+            </div>
+        </div>
+        <div class="form-row" style="grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 8px;">
+            <div class="form-group compact">
+                <label style="font-size: 10px; color: var(--text-secondary);">Hora</label>
+                <input type="time" class="batch-hora" value="09:00" required>
+            </div>
+            <div class="form-group compact">
+                <label style="font-size: 10px; color: var(--text-secondary);">Duração</label>
+                <select class="batch-duracao" style="width: 100%; padding: 6px; border-radius: 6px; border: 1px solid var(--border); background: var(--event-bg); color: var(--text-primary); font-size: 11px;">
+                    <option value="1">30min</option>
+                    <option value="2" selected>1h</option>
+                    <option value="3">1h30</option>
+                    <option value="4">2h</option>
+                    <option value="6">3h</option>
+                    <option value="8">4h</option>
+                </select>
+            </div>
+            <div class="form-group compact">
+                <label style="font-size: 10px; color: var(--text-secondary);">Data Início</label>
+                <input type="date" class="batch-inicio" value="${new Date().toISOString().split('T')[0]}" required>
+            </div>
+        </div>
+        <div class="form-row" style="grid-template-columns: 1fr 1fr; gap: 8px;">
+            <div class="form-group compact">
+                <label style="font-size: 10px; color: var(--text-secondary);">Data Fim</label>
+                <input type="date" class="batch-fim" value="2026-12-31">
+            </div>
+            <div class="form-group compact">
+                <label style="font-size: 10px; color: var(--text-secondary);">Descrição</label>
+                <input type="text" class="batch-desc" placeholder="(opcional)">
+            </div>
+        </div>
+    `;
+    
+    container.appendChild(div);
+}
+
+window.salvarLoteRotinas = async function() {
+    const rotinas = [];
+    
+    document.querySelectorAll('.batch-rotina-item').forEach(item => {
+        const titulo = item.querySelector('.batch-titulo').value.trim();
+        const dia = parseInt(item.querySelector('.batch-dia').value);
+        const hora = item.querySelector('.batch-hora').value;
+        const duracao = parseInt(item.querySelector('.batch-duracao').value);
+        const data_inicio = item.querySelector('.batch-inicio').value;
+        const data_fim = item.querySelector('.batch-fim').value;
+        const descricao = item.querySelector('.batch-desc').value.trim();
+        
+        if (!titulo || !hora || !data_inicio) {
+            return;
+        }
+        
+        rotinas.push({
+            titulo,
+            descricao,
+            cor: '#4285f4',
+            dias_semana: [dia],
+            hora_inicio: hora,
+            duracao,
+            data_inicio,
+            data_fim: data_fim || null
+        });
+    });
+    
+    if (rotinas.length === 0) {
+        alert('Preencha ao menos uma rotina com título, dia, hora e data início');
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/rotinas/batch', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ rotinas })
+        });
+        
+        const resultado = await response.json();
+        
+        if (response.ok) {
+            document.getElementById('rotinas-batch-section').style.display = 'none';
+            document.getElementById('batch-rotinas-container').innerHTML = '';
+            carregarRotinas();
+            alert(`${resultado.ids.length} rotina(s) criada(s) com sucesso!`);
+        } else {
+            alert(resultado.error || 'Erro ao criar rotinas');
+        }
+    } catch (erro) {
+        console.error('Erro ao salvar lote:', erro);
+        alert('Erro ao salvar rotinas');
     }
 }
 
