@@ -173,7 +173,6 @@ Delete o arquivo `database/agenda.db` e reinicie a aplicação. Um novo banco se
 - [ ] Notificações de eventos
 - [ ] Marcação de tarefas concluídas
 - [ ] Backup automático
-- [ ] Modo escuro
 
 ## 🎁 Enjoy Your Calendar!
 
