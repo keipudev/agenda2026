@@ -196,6 +196,51 @@ class TestAgendaApp(unittest.TestCase):
         )
         self.assertEqual(response.status_code, 404)
 
+    def test_deletar_todas_rotinas(self):
+        self.client.post('/api/rotina',
+            data=json.dumps({
+                'titulo': 'Rotina A',
+                'dias_semana': [1],
+                'hora_inicio': '08:00',
+                'data_inicio': '2026-01-01'
+            }),
+            content_type='application/json'
+        )
+        self.client.post('/api/rotina',
+            data=json.dumps({
+                'titulo': 'Rotina B',
+                'dias_semana': [2],
+                'hora_inicio': '09:00',
+                'data_inicio': '2026-01-01'
+            }),
+            content_type='application/json'
+        )
+        response = self.client.delete('/api/rotinas')
+        self.assertEqual(response.status_code, 200)
+        data = json.loads(response.data)
+        self.assertEqual(data['status'], 'todas_deletadas')
+
+        rotinas = self.client.get('/api/rotinas')
+        self.assertEqual(json.loads(rotinas.data), [])
+
+    def test_criar_rotinas_batch(self):
+        response = self.client.post('/api/rotinas/batch',
+            data=json.dumps({
+                'rotinas': [
+                    {'titulo': 'Rotina Batch 1', 'dias_semana': [1], 'hora_inicio': '07:00', 'data_inicio': '2026-01-01'},
+                    {'titulo': 'Rotina Batch 2', 'dias_semana': [3], 'hora_inicio': '08:00', 'data_inicio': '2026-01-01'}
+                ]
+            }),
+            content_type='application/json'
+        )
+        self.assertEqual(response.status_code, 200)
+        data = json.loads(response.data)
+        self.assertEqual(data['status'], 'sucesso')
+        self.assertEqual(len(data['ids']), 2)
+
+        rotinas = self.client.get('/api/rotinas')
+        self.assertEqual(len(json.loads(rotinas.data)), 2)
+
 
 if __name__ == '__main__':
     unittest.main()

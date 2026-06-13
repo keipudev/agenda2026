@@ -72,6 +72,43 @@
                         <div class="rotina-dia-content" id="rotina-dia-content">
                             <p class="no-events">Clique em um dia no calendário para ver a rotina</p>
                         </div>
+                        
+                        <div class="rotina-dia-add-form" id="rotina-dia-add-form">
+                            <button class="rotina-dia-toggle-btn" id="rotina-dia-toggle" title="Adicionar evento para este dia">
+                                <i class="fa-solid fa-plus"></i> Adicionar Evento
+                            </button>
+                            <form id="form-evento-rotina-dia" class="evento-rotina-dia-form" style="display: none;">
+                                <input type="hidden" id="rotina-dia-data">
+                                <div class="form-group compact">
+                                    <label>Título *</label>
+                                    <input type="text" id="rotina-dia-titulo" placeholder="Título do evento" required>
+                                </div>
+                                <div class="form-row compact">
+                                    <div class="form-group compact">
+                                        <label>Hora</label>
+                                        <select id="rotina-dia-hora"></select>
+                                    </div>
+                                    <div class="form-group compact">
+                                        <label>Duração</label>
+                                        <select id="rotina-dia-duracao">
+                                            <option value="1">30min</option>
+                                            <option value="2" selected>1h</option>
+                                            <option value="3">1h30min</option>
+                                            <option value="4">2h</option>
+                                            <option value="6">3h</option>
+                                            <option value="8">4h</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="form-group compact">
+                                    <label>Descrição</label>
+                                    <input type="text" id="rotina-dia-descricao" placeholder="(opcional)">
+                                </div>
+                                <div class="form-actions compact">
+                                    <button type="submit" class="btn-primary small">Salvar</button>
+                                </div>
+                            </form>
+                        </div>
                     </div>
                 </div>
                 
@@ -286,17 +323,33 @@
                             </div>
                             
                             <div class="form-actions">
-                                <button type="submit" class="btn-primary">Criar Rotina</button>
+                                <button type="button" id="btn-cancelar-rotina" class="btn-secondary" style="display: none;">Cancelar</button>
+                                <button type="submit" id="btn-salvar-rotina" class="btn-primary">Criar Rotina</button>
                             </div>
                         </form>
                     </div>
                     
                     <div class="events-list-container">
-                        <h3>Minhas Rotinas</h3>
+                        <div class="rotinas-header">
+                            <h3>Minhas Rotinas</h3>
+                            <div class="rotinas-header-actions">
+                                <button id="btn-lote-rotina" class="btn-secondary small"><i class="fa-solid fa-layer-group"></i> Criar em Lote</button>
+                                <button id="btn-deletar-todas-rotinas" class="btn-secondary small danger"><i class="fa-solid fa-trash"></i> Excluir Todas</button>
+                            </div>
+                        </div>
                         <div id="lista-rotinas" class="events-list">
                             <p class="no-events">Nenhuma rotina cadastrada</p>
                         </div>
                     </div>
+                </div>
+                
+                <!-- Formulário Lote de Rotinas (inicialmente oculto) -->
+                <div class="rotinas-batch-section" id="rotinas-batch-section" style="display: none; margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border);">
+                    <h3 style="font-size: 14px; font-weight: 600; color: var(--text-primary); margin-bottom: 10px;">Criar Várias Rotinas</h3>
+                    <div id="batch-rotinas-container"></div>
+                    <button id="btn-add-campo-rotina" class="btn-secondary small" style="margin-top: 10px;"><i class="fa-solid fa-plus"></i> Adicionar Rotina</button>
+                    <button id="btn-salvar-lote-rotina" class="btn-primary" style="float: right; margin-top: 10px;">Salvar Todas</button>
+                    <div style="clear: both; height: 10px;"></div>
                 </div>
             </section>
         </main>
