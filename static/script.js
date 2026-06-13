@@ -55,6 +55,13 @@ function configurarEventos() {
             if (tabId === 'rotinas') {
                 carregarRotinas();
             }
+            
+            if (tabId === 'dia') {
+                atualizarTituloDia();
+                renderizarGradeHoras();
+                carregarEventosDia();
+                carregarRotinaDia(estadoApp.dataSelecionada);
+            }
         });
     });
 
@@ -214,7 +221,26 @@ function renderizarCalendario() {
 
 function renderizarGradeHoras() {
     const container = document.getElementById('hours-grid');
-    container.innerHTML = '';
+
+    if (container.children.length > 0) {
+        limparGradeHoras();
+        return;
+    }
+
+    const dicaLabel = document.createElement('div');
+    dicaLabel.className = 'hora-label';
+    dicaLabel.textContent = 'Clique';
+
+    const dicaConteudo = document.createElement('div');
+    dicaConteudo.className = 'hora-eventos grade-hint-content';
+    dicaConteudo.textContent = 'em um horário para adicionar um evento';
+    dicaConteudo.addEventListener('click', () => abrirModalCriarEventoNaGrade(0));
+
+    const dica = document.createElement('div');
+    dica.className = 'bloco-hora grade-hint';
+    dica.appendChild(dicaLabel);
+    dica.appendChild(dicaConteudo);
+    container.appendChild(dica);
 
     for (let h = 0; h <= 23; h++) {
         const bloco = document.createElement('div');
@@ -227,6 +253,11 @@ function renderizarGradeHoras() {
         const horaEventos = document.createElement('div');
         horaEventos.className = 'hora-eventos';
         horaEventos.id = `hora-${h}`;
+        horaEventos.dataset.hora = String(h);
+        horaEventos.addEventListener('click', (e) => {
+            if (e.target.closest('.evento-card, .rotina-card')) return;
+            abrirModalCriarEventoNaGrade(h);
+        });
 
         bloco.appendChild(horaLabel);
         bloco.appendChild(horaEventos);
@@ -234,34 +265,87 @@ function renderizarGradeHoras() {
     }
 }
 
+function limparGradeHoras() {
+    for (let h = 0; h <= 23; h++) {
+        const el = document.getElementById(`hora-${h}`);
+        if (el) el.innerHTML = '';
+    }
+}
+
+function criarEventoCard(evento) {
+    const card = document.createElement('div');
+    card.className = 'evento-card';
+    card.style.borderLeftColor = evento.cor;
+
+    card.innerHTML = `
+        <div class="evento-titulo">${escapeHTML(evento.titulo)}</div>
+        ${evento.descricao ? `<div class="evento-desc">${escapeHTML(evento.descricao.substring(0, 45))}${evento.descricao.length > 45 ? '...' : ''}</div>` : ''}
+    `;
+
+    card.addEventListener('click', () => abrirDetalhesEvento(evento));
+    return card;
+}
+
+function criarRotinaCard(rotina) {
+    const card = document.createElement('div');
+    card.className = 'rotina-card';
+    card.style.borderLeftColor = rotina.cor;
+
+    const diasNomes = JSON.parse(rotina.dias_semana).map(d => nomesDiasCompletos[d] || '').join(', ');
+
+    card.innerHTML = `
+        <div class="rotina-card-titulo">${escapeHTML(rotina.titulo)}</div>
+        ${rotina.descricao ? `<div class="rotina-card-desc">${escapeHTML(rotina.descricao.substring(0, 45))}${rotina.descricao.length > 45 ? '...' : ''}</div>` : ''}
+        <div class="rotina-card-info">${escapeHTML(diasNomes)}</div>
+        <div class="rotina-card-horario">${escapeHTML(rotina.hora_inicio)} - ${escapeHTML(buscarFimHorario(rotina.hora_inicio, rotina.duracao))}</div>
+    `;
+
+    card.addEventListener('click', () => abrirDetalhesRotina(rotina));
+    return card;
+}
+
+function renderizarRotinasNaGrade() {
+    document.querySelectorAll('#hours-grid .rotina-card').forEach(card => card.remove());
+
+    (estadoApp.rotinasDoDia || []).forEach(rotina => {
+        const hora = parseInt(rotina.hora_inicio.split(':')[0], 10);
+        const container = document.getElementById(`hora-${hora}`);
+
+        if (container) {
+            container.appendChild(criarRotinaCard(rotina));
+        }
+    });
+}
+
+function escapeHTML(texto) {
+    const mapa = {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;'
+    };
+
+    return String(texto || '').replace(/[&<>"']/g, caractere => mapa[caractere]);
+}
+
 async function carregarEventosDia() {
     try {
         const response = await fetch(`/api/eventos/${estadoApp.dataSelecionada}`);
         const eventos = await response.json();
 
-        for (let h = 0; h <= 23; h++) {
-            const el = document.getElementById(`hora-${h}`);
-            if (el) el.innerHTML = '';
-        }
+        limparGradeHoras();
 
         eventos.forEach(evento => {
             const hora = parseInt(evento.hora.split(':')[0]);
             const container = document.getElementById(`hora-${hora}`);
 
             if (container) {
-                const card = document.createElement('div');
-                card.className = 'evento-card';
-                card.style.borderLeftColor = evento.cor;
-
-                card.innerHTML = `
-                    <div class="evento-titulo">${evento.titulo}</div>
-                    ${evento.descricao ? `<div class="evento-desc">${evento.descricao.substring(0, 30)}...</div>` : ''}
-                `;
-
-                card.addEventListener('click', () => abrirDetalhesEvento(evento));
-                container.appendChild(card);
+                container.appendChild(criarEventoCard(evento));
             }
         });
+
+        renderizarRotinasNaGrade();
 
         renderizarListaEventos(eventos);
 
@@ -276,6 +360,7 @@ async function carregarRotinaDia(data) {
         const rotinas = await response.json();
         estadoApp.rotinasDoDia = Array.isArray(rotinas) ? rotinas : [];
         renderizarRotinaDia(data);
+        renderizarRotinasNaGrade();
     } catch (erro) {
         console.error('Erro ao carregar rotinas do dia:', erro);
     }
@@ -413,6 +498,112 @@ function limparFormulario() {
     estadoApp.eventoEmEdicao = null;
 }
 
+function abrirModalCriarEventoNaGrade(hora) {
+    const data = estadoApp.dataSelecionada || document.getElementById('evento-data').value || document.getElementById('data-selecionada').value;
+    const horaFormatada = `${String(hora).padStart(2, '0')}:00`;
+    const modal = document.getElementById('modal-evento');
+    const modalBody = document.getElementById('modal-body');
+
+    modalBody.innerHTML = `
+        <div class="modal-intro">Adicionar evento em ${escapeHTML(formatarData(data))} às ${escapeHTML(horaFormatada)}</div>
+        <div style="margin-bottom: 15px;">
+            <label>Data</label>
+            <input type="date" value="${escapeHTML(data)}" disabled>
+        </div>
+        <div style="margin-bottom: 15px;">
+            <label>Hora</label>
+            <input type="text" value="${escapeHTML(horaFormatada)}" disabled>
+        </div>
+        <div style="margin-bottom: 15px;">
+            <label>Título *</label>
+            <input type="text" id="grade-evento-titulo" placeholder="Adicionar título" autofocus>
+        </div>
+        <div style="margin-bottom: 15px;">
+            <label>Descrição</label>
+            <textarea id="grade-evento-descricao" placeholder="Adicionar descrição"></textarea>
+        </div>
+        <div style="margin-bottom: 15px;">
+            <label>Duração</label>
+            <select id="grade-evento-duracao">
+                <option value="1">30 min</option>
+                <option value="2">1 hora</option>
+                <option value="3">1h30min</option>
+                <option value="4">2 horas</option>
+                <option value="5">2h30min</option>
+                <option value="6">3 horas</option>
+                <option value="7">3h30min</option>
+                <option value="8">4 horas</option>
+                <option value="9">4h30min</option>
+                <option value="10">5 horas</option>
+                <option value="11">5h30min</option>
+                <option value="12">6 horas</option>
+                <option value="13">6h30min</option>
+                <option value="14">7 horas</option>
+                <option value="15">7h30min</option>
+                <option value="16">8 horas</option>
+                <option value="17">8h30min</option>
+                <option value="18">9 horas</option>
+                <option value="19">9h30min</option>
+                <option value="20">10 horas</option>
+                <option value="21">10h30min</option>
+                <option value="22">11 horas</option>
+                <option value="23">11h30min</option>
+                <option value="24">12 horas</option>
+            </select>
+        </div>
+        <div style="margin-bottom: 15px;">
+            <label>Cor</label>
+            <input type="color" id="grade-evento-cor" value="#3498db" style="width: 100%; height: 40px; border: 1px solid var(--border); border-radius: var(--radius-sm); cursor: pointer;">
+        </div>
+        <div class="modal-actions">
+            <button id="btn-salvar-evento-grade" class="btn-primary" style="flex: 1;">Salvar</button>
+            <button onclick="fecharModal()" class="btn-secondary" style="flex: 1;">Cancelar</button>
+        </div>
+    `;
+
+    document.getElementById('btn-salvar-evento-grade').addEventListener('click', salvarEventoDaGrade);
+
+    modal.classList.add('active');
+}
+
+async function salvarEventoDaGrade() {
+    const data = estadoApp.dataSelecionada || document.getElementById('evento-data').value || document.getElementById('data-selecionada').value;
+    const horaInput = document.querySelector('#modal-body input[type="text"]');
+    const titulo = document.getElementById('grade-evento-titulo').value;
+    const descricao = document.getElementById('grade-evento-descricao').value;
+    const duracao = document.getElementById('grade-evento-duracao').value;
+    const cor = document.getElementById('grade-evento-cor').value;
+
+    if (!data || !titulo) {
+        alert('Preenchimento obrigatório: Data e Título');
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/evento', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ data, hora: horaInput.value, titulo, descricao, duracao, cor })
+        });
+
+        if (!response.ok) {
+            const erro = await response.json().catch(() => ({}));
+            alert(erro.error || 'Erro ao salvar evento');
+            return;
+        }
+
+        await carregarMeses();
+        await carregarEventosDia();
+        await carregarRotinaDia(data);
+        renderizarCalendario();
+        fecharModal();
+
+    } catch (erro) {
+        console.error('Erro ao salvar evento:', erro);
+        alert('Erro ao salvar evento');
+    }
+}
+
 async function abrirDetalhesEvento(evento) {
     estadoApp.eventoEmEdicao = evento.id;
 
@@ -457,6 +648,46 @@ async function abrirDetalhesEvento(evento) {
             <button onclick="fecharModal()" style="flex: 1; padding: 10px; background: #95a5a6; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 600;">Fechar</button>
         </div>
     `;
+
+    modal.classList.add('active');
+}
+
+function abrirDetalhesRotina(rotina) {
+    const modal = document.getElementById('modal-evento');
+    const modalBody = document.getElementById('modal-body');
+    const diasNomes = JSON.parse(rotina.dias_semana).map(d => nomesDiasCompletos[d] || '').join(', ');
+
+    modalBody.innerHTML = `
+        <div style="margin-bottom: 15px;">
+            <label>Título</label>
+            <input type="text" value="${escapeHTML(rotina.titulo)}" disabled>
+        </div>
+        <div style="margin-bottom: 15px;">
+            <label>Descrição</label>
+            <textarea disabled>${escapeHTML(rotina.descricao || '')}</textarea>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px;">
+            <div>
+                <label>Dias</label>
+                <input type="text" value="${escapeHTML(diasNomes)}" disabled>
+            </div>
+            <div>
+                <label>Horário</label>
+                <input type="text" value="${escapeHTML(rotina.hora_inicio)} - ${escapeHTML(buscarFimHorario(rotina.hora_inicio, rotina.duracao))}" disabled>
+            </div>
+        </div>
+        <div style="margin-bottom: 15px;">
+            <label>Período</label>
+            <input type="text" value="${escapeHTML(rotina.data_inicio)}${rotina.data_fim ? ' até ' + escapeHTML(rotina.data_fim) : ''}" disabled>
+        </div>
+        <div class="modal-actions">
+            <button id="btn-gerar-eventos-grade" class="btn-primary" style="flex: 1;">Gerar eventos</button>
+            <button id="btn-fechar-rotina-grade" class="btn-secondary" style="flex: 1;">Fechar</button>
+        </div>
+    `;
+
+    document.getElementById('btn-gerar-eventos-grade').addEventListener('click', () => gerarEventosRotina(rotina.id));
+    document.getElementById('btn-fechar-rotina-grade').addEventListener('click', fecharModal);
 
     modal.classList.add('active');
 }
