@@ -1,0 +1,26 @@
+services:
+  agenda:
+    build: .
+    container_name: agenda2026
+    restart: unless-stopped
+    environment:
+      - FLASK_DEBUG=1
+    volumes:
+      - .:/app
+      - agenda-db:/app/database
+
+  nginx:
+    image: nginx:alpine
+    container_name: agenda-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./certs:/etc/nginx/certs:ro
+    depends_on:
+      - agenda
+
+volumes:
+  agenda-db:
