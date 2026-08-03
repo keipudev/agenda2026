@@ -44,4 +44,4 @@ volumes:
 
 networks:
   agenda-network:
-    driver: bridge:
+    driver: bridge
