@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Agenda Pessoal 2026 - Estilo Google Calendar</title>
+    <title>Agenda</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 </head>
@@ -14,9 +14,9 @@
             <div class="sidebar-header">
                 <i class="fa-solid fa-calendar-check"></i>
                 <h1>Agenda 2026</h1>
-                <button id="theme-toggle" title="Alternar tema" style="margin-left: auto; background: none; border: none; cursor: pointer; font-size: 20px; color: var(--text-secondary);">
-                    <i class="fa-solid fa-moon"></i>
-                </button>
+            <button id="theme-toggle" title="Alternar tema">
+                <i class="fa-solid fa-moon"></i>
+            </button>
             </div>
             
             <button class="btn-primary new-event-btn" id="btn-novo-evento">
@@ -86,18 +86,11 @@
                                 <div class="form-row compact">
                                     <div class="form-group compact">
                                         <label>Hora</label>
-                                        <select id="rotina-dia-hora"></select>
+                                        <div class="time-picker full-width" id="rotina-dia-hora-picker"></div>
                                     </div>
                                     <div class="form-group compact">
                                         <label>Duração</label>
-                                        <select id="rotina-dia-duracao">
-                                            <option value="1">30min</option>
-                                            <option value="2" selected>1h</option>
-                                            <option value="3">1h30min</option>
-                                            <option value="4">2h</option>
-                                            <option value="6">3h</option>
-                                            <option value="8">4h</option>
-                                        </select>
+                                        <div class="duration-spinner full-width" id="rotina-dia-duracao-spinner"></div>
                                     </div>
                                 </div>
                                 <div class="form-group compact">
@@ -147,39 +140,12 @@
                             
                             <div class="form-row">
                                 <div class="form-group">
-                                    <label for="evento-hora">Hora</label>
-                                    <select id="evento-hora" required>
-                                        <option value="">Selecione hora</option>
-                                    </select>
+                                    <label>Hora</label>
+                                    <div class="time-picker full-width" id="evento-hora-picker"></div>
                                 </div>
                                 <div class="form-group">
-                                    <label for="evento-duracao">Duração</label>
-                                    <select id="evento-duracao">
-                                        <option value="1">30 min</option>
-                                        <option value="2">1 hora</option>
-                                        <option value="3">1h30min</option>
-                                        <option value="4">2 horas</option>
-                                        <option value="5">2h30min</option>
-                                        <option value="6">3 horas</option>
-                                        <option value="7">3h30min</option>
-                                        <option value="8">4 horas</option>
-                                        <option value="9">4h30min</option>
-                                        <option value="10">5 horas</option>
-                                        <option value="11">5h30min</option>
-                                        <option value="12">6 horas</option>
-                                        <option value="13">6h30min</option>
-                                        <option value="14">7 horas</option>
-                                        <option value="15">7h30min</option>
-                                        <option value="16">8 horas</option>
-                                        <option value="17">8h30min</option>
-                                        <option value="18">9 horas</option>
-                                        <option value="19">9h30min</option>
-                                        <option value="20">10 horas</option>
-                                        <option value="21">10h30min</option>
-                                        <option value="22">11 horas</option>
-                                        <option value="23">11h30min</option>
-                                        <option value="24">12 horas</option>
-                                    </select>
+                                    <label>Duração</label>
+                                    <div class="duration-spinner full-width" id="evento-duracao-spinner"></div>
                                 </div>
                             </div>
                             
@@ -262,39 +228,12 @@
                             
                             <div class="form-row">
                                 <div class="form-group">
-                                    <label for="rotina-hora">Hora Início</label>
-                                    <select id="rotina-hora" required>
-                                        <option value="">Selecione hora</option>
-                                    </select>
+                                    <label>Hora Início</label>
+                                    <div class="time-picker full-width" id="rotina-hora-picker"></div>
                                 </div>
                                 <div class="form-group">
-                                    <label for="rotina-duracao">Duração</label>
-                                    <select id="rotina-duracao">
-                                        <option value="1">30 min</option>
-                                        <option value="2" selected>1 hora</option>
-                                        <option value="3">1h30min</option>
-                                        <option value="4">2 horas</option>
-                                        <option value="5">2h30min</option>
-                                        <option value="6">3 horas</option>
-                                        <option value="7">3h30min</option>
-                                        <option value="8">4 horas</option>
-                                        <option value="9">4h30min</option>
-                                        <option value="10">5 horas</option>
-                                        <option value="11">5h30min</option>
-                                        <option value="12">6 horas</option>
-                                        <option value="13">6h30min</option>
-                                        <option value="14">7 horas</option>
-                                        <option value="15">7h30min</option>
-                                        <option value="16">8 horas</option>
-                                        <option value="17">8h30min</option>
-                                        <option value="18">9 horas</option>
-                                        <option value="19">9h30min</option>
-                                        <option value="20">10 horas</option>
-                                        <option value="21">10h30min</option>
-                                        <option value="22">11 horas</option>
-                                        <option value="23">11h30min</option>
-                                        <option value="24">12 horas</option>
-                                    </select>
+                                    <label>Duração</label>
+                                    <div class="duration-spinner full-width" id="rotina-duracao-spinner"></div>
                                 </div>
                             </div>
                             
@@ -323,7 +262,7 @@
                             </div>
                             
                             <div class="form-actions">
-                                <button type="button" id="btn-cancelar-rotina" class="btn-secondary" style="display: none;">Cancelar</button>
+                                <button type="button" id="btn-cancelar-rotina" class="btn-secondary hidden">Cancelar</button>
                                 <button type="submit" id="btn-salvar-rotina" class="btn-primary">Criar Rotina</button>
                             </div>
                         </form>
@@ -344,12 +283,13 @@
                 </div>
                 
                 <!-- Formulário Lote de Rotinas (inicialmente oculto) -->
-                <div class="rotinas-batch-section" id="rotinas-batch-section" style="display: none; margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border);">
-                    <h3 style="font-size: 14px; font-weight: 600; color: var(--text-primary); margin-bottom: 10px;">Criar Várias Rotinas</h3>
+                <div class="rotinas-batch-section hidden" id="rotinas-batch-section">
+                    <h3 class="rotinas-batch-title">Criar Várias Rotinas</h3>
                     <div id="batch-rotinas-container"></div>
-                    <button id="btn-add-campo-rotina" class="btn-secondary small" style="margin-top: 10px;"><i class="fa-solid fa-plus"></i> Adicionar Rotina</button>
-                    <button id="btn-salvar-lote-rotina" class="btn-primary" style="float: right; margin-top: 10px;">Salvar Todas</button>
-                    <div style="clear: both; height: 10px;"></div>
+                    <div class="rotinas-batch-actions">
+                        <button id="btn-add-campo-rotina" class="btn-secondary small"><i class="fa-solid fa-plus"></i> Adicionar Rotina</button>
+                        <button id="btn-salvar-lote-rotina" class="btn-primary">Salvar Todas</button>
+                    </div>
                 </div>
             </section>
         </main>

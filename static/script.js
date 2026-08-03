@@ -21,6 +21,93 @@ const nomesDiasCompletosFormat = {
     3: 'Quarta-feira', 4: 'Quinta-feira', 5: 'Sexta-feira', 6: 'Sábado'
 };
 
+function criarTimePicker(container, valorInicial) {
+    container.innerHTML = `
+        <div class="spinner-group">
+            <button class="spinner-btn up" type="button"></button>
+            <input type="text" class="spinner-input" value="${String(valorInicial).padStart(2, '0')}" readonly>
+            <button class="spinner-btn down" type="button"></button>
+        </div>
+    `;
+    const input = container.querySelector('.spinner-input');
+    const upBtn = container.querySelector('.spinner-btn.up');
+    const downBtn = container.querySelector('.spinner-btn.down');
+    let valor = valorInicial;
+
+    function atualizar() {
+        input.value = String(valor).padStart(2, '0');
+    }
+
+    upBtn.addEventListener('click', () => {
+        valor = valor < 23 ? valor + 1 : 0;
+        atualizar();
+    });
+
+    downBtn.addEventListener('click', () => {
+        valor = valor > 0 ? valor - 1 : 23;
+        atualizar();
+    });
+
+    return {
+        getValue: () => valor,
+        setValue: (v) => { valor = v; atualizar(); }
+    };
+}
+
+function criarDurationSpinner(container, valorInicial) {
+    container.innerHTML = `
+        <div class="spinner-group">
+            <button class="spinner-btn up" type="button"></button>
+            <input type="text" class="spinner-input" value="${valorInicial}" readonly>
+            <button class="spinner-btn down" type="button"></button>
+        </div>
+        <span class="duration-unit">h</span>
+    `;
+    const input = container.querySelector('.spinner-input');
+    const upBtn = container.querySelector('.spinner-btn.up');
+    const downBtn = container.querySelector('.spinner-btn.down');
+    let valor = valorInicial;
+
+    function atualizar() {
+        input.value = valor;
+    }
+
+    upBtn.addEventListener('click', () => {
+        valor = valor < 24 ? valor + 1 : 1;
+        atualizar();
+    });
+
+    downBtn.addEventListener('click', () => {
+        valor = valor > 1 ? valor - 1 : 24;
+        atualizar();
+    });
+
+    return {
+        getValue: () => valor,
+        setValue: (v) => { valor = v; atualizar(); }
+    };
+}
+
+function getTimePickerValue(pickerId) {
+    const input = document.querySelector(`#${pickerId} .spinner-input`);
+    return input ? input.value : '';
+}
+
+function setTimePickerValue(pickerId, valor) {
+    const input = document.querySelector(`#${pickerId} .spinner-input`);
+    if (input) input.value = String(valor).padStart(2, '0');
+}
+
+function getDurationSpinnerValue(spinnerId) {
+    const input = document.querySelector(`#${spinnerId} .spinner-input`);
+    return input ? input.value : '';
+}
+
+function setDurationSpinnerValue(spinnerId, valor) {
+    const input = document.querySelector(`#${spinnerId} .spinner-input`);
+    if (input) input.value = valor;
+}
+
 // Inicialização
 document.addEventListener('DOMContentLoaded', () => {
     inicializarAplicacao();
@@ -433,7 +520,7 @@ function updateRotinaDiaFormState(data) {
     
     document.getElementById('rotina-dia-titulo').value = '';
     document.getElementById('rotina-dia-descricao').value = '';
-    document.getElementById('rotina-dia-duracao').value = '2';
+    setDurationSpinnerValue('rotina-dia-duracao-spinner', '2');
     document.getElementById('rotina-dia-data').value = data || '';
 }
 
@@ -441,10 +528,10 @@ async function salvarEventoRotinaDia(e) {
     e.preventDefault();
     
     const data = document.getElementById('rotina-dia-data').value;
-    const hora = document.getElementById('rotina-dia-hora').value;
+    const hora = getTimePickerValue('rotina-dia-hora-picker');
     const titulo = document.getElementById('rotina-dia-titulo').value;
     const descricao = document.getElementById('rotina-dia-descricao').value;
-    const duracao = document.getElementById('rotina-dia-duracao').value;
+    const duracao = getDurationSpinnerValue('rotina-dia-duracao-spinner');
     
     if (!data || !hora || !titulo) {
         alert('Preenchimento obrigatório: Data, Hora e Título');
@@ -508,23 +595,17 @@ function renderizarListaEventos(eventos) {
 }
 
 function preencherSeletorHoras() {
-    const select = document.getElementById('evento-hora');
-    select.innerHTML = '<option value="">Selecione hora</option>';
-    
-    for (let h = 0; h <= 23; h++) {
-        const option = document.createElement('option');
-        option.value = String(h).padStart(2, '0') + ':00';
-        option.textContent = String(h).padStart(2, '0') + ':00';
-        select.appendChild(option);
-    }
+    const container = document.getElementById('evento-hora-picker');
+    if (!container || container.children.length > 0) return;
+    criarTimePicker(container, 0);
 }
 
 async function salvarEvento() {
     const data = document.getElementById('evento-data').value;
-    const hora = document.getElementById('evento-hora').value;
+    const hora = getTimePickerValue('evento-hora-picker');
     const titulo = document.getElementById('evento-titulo').value;
     const descricao = document.getElementById('evento-descricao').value;
-    const duracao = document.getElementById('evento-duracao').value;
+    const duracao = getDurationSpinnerValue('evento-duracao-spinner');
     const cor = document.getElementById('evento-cor').value;
 
     if (!data || !hora || !titulo) {
@@ -561,7 +642,7 @@ async function salvarEvento() {
 function limparFormulario() {
     document.getElementById('evento-titulo').value = '';
     document.getElementById('evento-descricao').value = '';
-    document.getElementById('evento-duracao').value = '1';
+    setDurationSpinnerValue('evento-duracao-spinner', '1');
     document.getElementById('evento-cor').value = '#3498db';
     estadoApp.eventoEmEdicao = null;
 }
@@ -823,17 +904,9 @@ function configurarDarkMode() {
 
 // ========== ROTINAS ==========
 function preencherSeletorHorasRotinaDia() {
-    const selects = document.querySelectorAll('#rotina-dia-hora');
-    selects.forEach(select => {
-        if (select.options.length > 0) return;
-        select.innerHTML = '<option value="">Hora</option>';
-        for (let h = 0; h <= 23; h++) {
-            const option = document.createElement('option');
-            option.value = String(h).padStart(2, '0') + ':00';
-            option.textContent = String(h).padStart(2, '0') + ':00';
-            select.appendChild(option);
-        }
-    });
+    const container = document.getElementById('rotina-dia-hora-picker');
+    if (!container || container.children.length > 0) return;
+    criarTimePicker(container, 0);
 }
 
 function configurarRotinaDiaForm() {
@@ -884,15 +957,9 @@ function configurarRotinas() {
 }
 
 function preencherSeletorHorasRotina() {
-    const select = document.getElementById('rotina-hora');
-    select.innerHTML = '<option value="">Selecione hora</option>';
-    
-    for (let h = 0; h <= 23; h++) {
-        const option = document.createElement('option');
-        option.value = String(h).padStart(2, '0') + ':00';
-        option.textContent = String(h).padStart(2, '0') + ':00';
-        select.appendChild(option);
-    }
+    const container = document.getElementById('rotina-hora-picker');
+    if (!container || container.children.length > 0) return;
+    criarTimePicker(container, 0);
 }
 
 async function carregarRotinas() {
@@ -950,8 +1017,8 @@ window.editarRotina = async function(id) {
         document.getElementById('rotina-titulo').value = rotina.titulo;
         document.getElementById('rotina-descricao').value = rotina.descricao || '';
         document.getElementById('rotina-cor').value = rotina.cor;
-        document.getElementById('rotina-hora').value = rotina.hora_inicio;
-        document.getElementById('rotina-duracao').value = rotina.duracao;
+        setTimePickerValue('rotina-hora-picker', rotina.hora_inicio);
+        setDurationSpinnerValue('rotina-duracao-spinner', rotina.duracao);
         document.getElementById('rotina-data-inicio').value = rotina.data_inicio;
         document.getElementById('rotina-data-fim').value = rotina.data_fim || '';
         
@@ -983,8 +1050,8 @@ async function salvarRotina() {
     const titulo = document.getElementById('rotina-titulo').value;
     const descricao = document.getElementById('rotina-descricao').value;
     const cor = document.getElementById('rotina-cor').value;
-    const hora_inicio = document.getElementById('rotina-hora').value;
-    const duracao = document.getElementById('rotina-duracao').value;
+    const hora_inicio = getTimePickerValue('rotina-hora-picker');
+    const duracao = getDurationSpinnerValue('rotina-duracao-spinner');
     const data_inicio = document.getElementById('rotina-data-inicio').value;
     const data_fim = document.getElementById('rotina-data-fim').value;
     
@@ -1224,8 +1291,8 @@ function limparFormularioRotina() {
     document.getElementById('rotina-titulo').value = '';
     document.getElementById('rotina-descricao').value = '';
     document.getElementById('rotina-cor').value = '#4285f4';
-    document.getElementById('rotina-hora').value = '';
-    document.getElementById('rotina-duracao').value = '2';
+    setTimePickerValue('rotina-hora-picker', '');
+    setDurationSpinnerValue('rotina-duracao-spinner', '2');
     document.getElementById('rotina-data-inicio').value = '';
     document.getElementById('rotina-data-fim').value = '';
     document.querySelectorAll('.weekday-chk input[type="checkbox"]').forEach(cb => cb.checked = false);
