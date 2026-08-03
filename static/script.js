@@ -25,32 +25,85 @@ function criarTimePicker(container, valorInicial) {
     container.innerHTML = `
         <div class="spinner-group">
             <button class="spinner-btn up" type="button"></button>
-            <input type="text" class="spinner-input" value="${String(valorInicial).padStart(2, '0')}" readonly>
+            <input type="text" class="spinner-input" value="${String(valorInicial).padStart(2, '0')}" maxlength="2" inputmode="numeric">
+            <button class="spinner-btn down" type="button"></button>
+        </div>
+        <span class="time-sep">:</span>
+        <div class="spinner-group">
+            <button class="spinner-btn up" type="button"></button>
+            <input type="text" class="spinner-input" value="00" maxlength="2" inputmode="numeric">
             <button class="spinner-btn down" type="button"></button>
         </div>
     `;
-    const input = container.querySelector('.spinner-input');
-    const upBtn = container.querySelector('.spinner-btn.up');
-    const downBtn = container.querySelector('.spinner-btn.down');
-    let valor = valorInicial;
+    const hourInput = container.querySelector('.spinner-group:first-child .spinner-input');
+    const hourUp = container.querySelector('.spinner-group:first-child .spinner-btn.up');
+    const hourDown = container.querySelector('.spinner-group:first-child .spinner-btn.down');
+    const minInput = container.querySelector('.spinner-group:last-child .spinner-input');
+    const minUp = container.querySelector('.spinner-group:last-child .spinner-btn.up');
+    const minDown = container.querySelector('.spinner-group:last-child .spinner-btn.down');
+    let hora = valorInicial;
+    let minuto = 0;
 
     function atualizar() {
-        input.value = String(valor).padStart(2, '0');
+        hourInput.value = String(hora).padStart(2, '0');
+        minInput.value = String(minuto).padStart(2, '0');
     }
 
-    upBtn.addEventListener('click', () => {
-        valor = valor < 23 ? valor + 1 : 0;
+    hourUp.addEventListener('click', () => {
+        hora = hora < 23 ? hora + 1 : 0;
         atualizar();
     });
 
-    downBtn.addEventListener('click', () => {
-        valor = valor > 0 ? valor - 1 : 23;
+    hourDown.addEventListener('click', () => {
+        hora = hora > 0 ? hora - 1 : 23;
         atualizar();
     });
+
+    minUp.addEventListener('click', () => {
+        minuto = minuto < 59 ? minuto + 1 : 0;
+        atualizar();
+    });
+
+    minDown.addEventListener('click', () => {
+        minuto = minuto > 0 ? minuto - 1 : 59;
+        atualizar();
+    });
+
+    function validarCampo(input, max, field) {
+        input.addEventListener('change', () => {
+            let v = parseInt(input.value, 10);
+            if (isNaN(v)) v = 0;
+            v = Math.min(Math.max(v, 0), max);
+            if (field === 'min') {
+                minuto = v;
+            } else {
+                hora = v;
+            }
+            atualizar();
+        });
+        input.addEventListener('input', () => {
+            let v = input.value.replace(/[^0-9]/g, '');
+            if (v.length > 2) v = v.slice(0, 2);
+            input.value = v;
+        });
+    }
+
+    validarCampo(hourInput, 23, 'hora');
+    validarCampo(minInput, 59, 'min');
 
     return {
-        getValue: () => valor,
-        setValue: (v) => { valor = v; atualizar(); }
+        getValue: () => `${String(hora).padStart(2, '0')}:${String(minuto).padStart(2, '0')}`,
+        setValue: (v) => {
+            if (typeof v === 'string' && v.includes(':')) {
+                const [h, m] = v.split(':').map(n => parseInt(n, 10));
+                hora = isNaN(h) ? 0 : Math.min(Math.max(h, 0), 23);
+                minuto = isNaN(m) ? 0 : Math.min(Math.max(m, 0), 59);
+            } else {
+                hora = Math.min(Math.max(parseInt(v, 10) || 0, 0), 23);
+                minuto = 0;
+            }
+            atualizar();
+        }
     };
 }
 
@@ -58,7 +111,7 @@ function criarDurationSpinner(container, valorInicial) {
     container.innerHTML = `
         <div class="spinner-group">
             <button class="spinner-btn up" type="button"></button>
-            <input type="text" class="spinner-input" value="${valorInicial}" readonly>
+            <input type="text" class="spinner-input" value="${valorInicial}" maxlength="2" inputmode="numeric">
             <button class="spinner-btn down" type="button"></button>
         </div>
         <span class="duration-unit">h</span>
@@ -82,6 +135,19 @@ function criarDurationSpinner(container, valorInicial) {
         atualizar();
     });
 
+    input.addEventListener('change', () => {
+        let v = parseInt(input.value, 10);
+        if (isNaN(v)) v = 1;
+        valor = Math.min(Math.max(v, 1), 24);
+        atualizar();
+    });
+
+    input.addEventListener('input', () => {
+        let v = input.value.replace(/[^0-9]/g, '');
+        if (v.length > 2) v = v.slice(0, 2);
+        input.value = v;
+    });
+
     return {
         getValue: () => valor,
         setValue: (v) => { valor = v; atualizar(); }
@@ -89,13 +155,29 @@ function criarDurationSpinner(container, valorInicial) {
 }
 
 function getTimePickerValue(pickerId) {
-    const input = document.querySelector(`#${pickerId} .spinner-input`);
-    return input ? input.value : '';
+    const container = document.getElementById(pickerId);
+    if (!container) return '';
+    const inputs = container.querySelectorAll('.spinner-input');
+    if (inputs.length === 0) return '';
+    if (inputs.length === 2) {
+        return `${inputs[0].value}:${inputs[1].value}`;
+    }
+    return inputs[0].value;
 }
 
 function setTimePickerValue(pickerId, valor) {
-    const input = document.querySelector(`#${pickerId} .spinner-input`);
-    if (input) input.value = String(valor).padStart(2, '0');
+    const container = document.getElementById(pickerId);
+    if (!container) return;
+    const inputs = container.querySelectorAll('.spinner-input');
+    if (inputs.length === 0) return;
+    if (typeof valor === 'string' && valor.includes(':')) {
+        const [h, m] = valor.split(':');
+        inputs[0].value = String(parseInt(h, 10) || 0).padStart(2, '0');
+        if (inputs[1]) inputs[1].value = String(parseInt(m, 10) || 0).padStart(2, '0');
+    } else {
+        inputs[0].value = String(valor || 0).padStart(2, '0');
+        if (inputs[1]) inputs[1].value = '00';
+    }
 }
 
 function getDurationSpinnerValue(spinnerId) {
@@ -120,6 +202,7 @@ async function inicializarAplicacao() {
     irParaHoje();
     preencherSeletorHoras();
     preencherSeletorHorasRotinaDia();
+    preencherDurationSpinners();
     configurarEventos();
     configurarRotinas();
     configurarRotinaDiaForm();
@@ -316,20 +399,21 @@ function renderizarGradeHoras() {
         return;
     }
 
-    const dicaLabel = document.createElement('div');
-    dicaLabel.className = 'hora-label';
-    dicaLabel.textContent = 'Clique';
+    // Cabeçalho da grade de horas
+    const cabecalho = document.createElement('div');
+    cabecalho.className = 'grade-header';
 
-    const dicaConteudo = document.createElement('div');
-    dicaConteudo.className = 'hora-eventos grade-hint-content';
-    dicaConteudo.textContent = 'em um horário para adicionar um evento';
-    dicaConteudo.addEventListener('click', () => abrirModalCriarEventoNaGrade(0));
+    const cabecalhoHora = document.createElement('div');
+    cabecalhoHora.className = 'hora-label';
+    cabecalhoHora.textContent = 'Hora';
 
-    const dica = document.createElement('div');
-    dica.className = 'bloco-hora grade-hint';
-    dica.appendChild(dicaLabel);
-    dica.appendChild(dicaConteudo);
-    container.appendChild(dica);
+    const cabecalhoConteudo = document.createElement('div');
+    cabecalhoConteudo.className = 'hora-eventos';
+    cabecalhoConteudo.textContent = 'Horários';
+
+    cabecalho.appendChild(cabecalhoHora);
+    cabecalho.appendChild(cabecalhoConteudo);
+    container.appendChild(cabecalho);
 
     for (let h = 0; h <= 23; h++) {
         const bloco = document.createElement('div');
@@ -598,6 +682,21 @@ function preencherSeletorHoras() {
     const container = document.getElementById('evento-hora-picker');
     if (!container || container.children.length > 0) return;
     criarTimePicker(container, 0);
+}
+
+function preencherDurationSpinners() {
+    const spinners = [
+        { id: 'evento-duracao-spinner', valor: 1 },
+        { id: 'rotina-dia-duracao-spinner', valor: 2 },
+        { id: 'rotina-duracao-spinner', valor: 2 }
+    ];
+
+    spinners.forEach(({ id, valor }) => {
+        const container = document.getElementById(id);
+        if (container && container.children.length === 0) {
+            criarDurationSpinner(container, valor);
+        }
+    });
 }
 
 async function salvarEvento() {
