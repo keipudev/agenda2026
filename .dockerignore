@@ -1,12 +1,48 @@
-.git
+# Git
+.git/
 .gitignore
-*.pyc
+
+# Python
 __pycache__/
-*.db
+*.pyc
+*.pyo
+*.pyc
+
+# Database
+database/*.db
+database/*.db-journal
+
+# Environment
 .env
 .env.*
+
+# Logs
 *.log
+
+# IDEs
 .IDE/
 .vscode/
 .idea/
+
+# OS
 .DS_Store
+Thumbs.db
+
+# Node
+node_modules/
+
+# Kilo config
+.kilo/
+.postman/
+
+# Docker
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Certificates (mounted at runtime)
+certs/
+
+# Scripts
+executar_agenda.bat
+sqllite.bat
