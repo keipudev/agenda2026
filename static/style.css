@@ -1405,3 +1405,112 @@ body {
     font-weight: 600;
     margin-left: 4px;
 }
+
+/* ==== Weekdays Selector ==== */
+.weekdays-selector {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 4px 0;
+}
+
+.weekday-chk {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 11px;
+    background: var(--hover-bg);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: background 0.2s, border-color 0.2s, color 0.2s;
+    user-select: none;
+    white-space: nowrap;
+}
+
+.weekday-chk:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+.weekday-chk input[type="checkbox"] {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 16px;
+    height: 16px;
+    border: 2px solid var(--secondary);
+    border-radius: 4px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s, border-color 0.2s;
+    flex-shrink: 0;
+    margin: 0;
+}
+
+.weekday-chk input[type="checkbox"]:checked {
+    background: var(--primary);
+    border-color: var(--primary);
+}
+
+.weekday-chk input[type="checkbox"]:checked::after {
+    content: '\2713';
+    color: white;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.weekday-chk input[type="checkbox"]:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+}
+
+/* ==== Grade de Horas - Cabeçalho ==== */
+.grade-header {
+    display: flex;
+    border-bottom: 2px solid var(--primary);
+    background: var(--hover-bg);
+    min-height: 40px;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+}
+
+.grade-header .hora-label {
+    font-weight: 700;
+}
+
+.grade-header .hora-eventos {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--primary);
+    display: flex;
+    align-items: center;
+}
+
+/* ==== Time Picker / Duration width adjustments ==== */
+.time-picker .spinner-input {
+    width: 26px;
+}
+
+.duration-spinner .spinner-input {
+    width: 34px;
+}
+
+@media (max-width: 480px) {
+    .weekdays-selector {
+        gap: 6px;
+    }
+
+    .weekday-chk {
+        padding: 6px 9px;
+        font-size: 11px;
+    }
+}
