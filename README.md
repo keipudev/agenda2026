@@ -1,184 +1,262 @@
-# 📅 Agenda Pessoal 2026
+# Agenda API 2026
 
-Uma aplicação web para organizar sua vida até o final de 2026 com grade de horas, anotações e eventos.
+![Python](https://img.shields.io/badge/python-3.11%2B-blue)
+![Flask](https://img.shields.io/badge/flask-2.3-green)
+![SQLAlchemy](https://img.shields.io/badge/SQLAlchemy-3.1-red)
+![Docker](https://img.shields.io/badge/docker-ready-blue)
+![License](https://img.shields.io/badge/license-MIT-green)
 
-## 🎯 Características
+API REST em Flask para gerenciamento de agenda pessoal com suporte a eventos e rotinas.
 
-- ✅ **Calendário Completo**: Visualize todos os meses de 2026
-- ✅ **Grade de Horas**: Visualize seu dia com divisão em horas (00:00 até 23:00)
-- ✅ **Eventos Organizados**: Crie, edite e delete eventos
-- ✅ **Anotações**: Adicione descrições e detalhes aos eventos
-- ✅ **Cores Personalizadas**: Cada evento pode ter sua própria cor
-- ✅ **Expandível**: Clique em qualquer evento para ver/editar detalhes
-- ✅ **Persistência**: Todos os dados são salvos em banco de dados SQLite
-- ✅ **Interface Intuitiva**: Design responsivo e fácil de usar
+## Tech Stack
 
-## 📦 Estrutura do Projeto
+| Camada | Tecnologia |
+|--------|-----------|
+| **Framework** | Flask 2.3 |
+| **ORM** | SQLAlchemy 3.1 |
+| **Banco** | SQLite (dev) / PostgreSQL (prod) |
+| **API Docs** | OpenAPI-ready |
+| **Validação** | Pydantic v2 |
+| **CORS** | Flask-CORS |
+| **Servidor** | Gunicorn (prod) / Flask dev server |
+| **Container** | Docker + Docker Compose |
+| **Qualidade** | pytest, black, flake8 |
+
+## Estrutura
 
 ```
 agenda2026/
-├── app.py                 # Backend Flask
+├── app.py                 # Aplicação Flask + Models + Routes
 ├── requirements.txt       # Dependências Python
+├── .env.example          # Variáveis de ambiente (template)
+├── Dockerfile            # Imagem de produção
+├── docker-compose.yml    # Orquestração Linux
+├── docker-compose.windows.yml  # Orquestração Windows
+├── README.md             # Documentação
+├── AGENTS.md             # Comandos do projeto
+├── GUIA_RAPIDO.md        # Guia rápido
+├── ARQUITETURA.md        # Arquitetura
 ├── static/
-│   ├── style.css         # Estilos CSS
-│   └── script.js         # Lógica JavaScript (frontend)
+│   ├── style.css
+│   └── script.js
 ├── templates/
-│   └── index.html        # Interface HTML
-├── database/
-│   └── agenda.db         # Banco de dados SQLite (criado automaticamente)
-└── README.md             # Este arquivo
+│   └── index.html
+└── database/
+    └── agenda.db         # SQLite (gerado automaticamente)
 ```
 
-## 🚀 Como Usar
+## Setup
 
-### 1. Instalar Dependências
+### Pré-requisitos
+
+- Python 3.11+
+- pip
+- Docker (opcional)
+
+### Instalação local
 
 ```bash
-cd c:\agenda2026
+python -m venv .venv
+source .venv/bin/activate  # Linux/Mac
+.venv\Scripts\activate     # Windows
+
 pip install -r requirements.txt
+cp .env.example .env
+python app.py
 ```
 
-### 2. Executar a Aplicação
+### Variáveis de ambiente
+
+Copie `.env.example` para `.env` e ajuste:
+
+```bash
+FLASK_DEBUG=0
+AGENDA_PORT=5000
+SECRET_KEY=super-secret-key
+DATABASE_URL=sqlite:///database/agenda.db
+```
+
+## Execução
+
+### Local
 
 ```bash
 python app.py
 ```
 
-A aplicação estará disponível em: **http://localhost:5000**
+Acesse: http://localhost:5000
 
-### 3. Parar a Aplicação
+### Docker (Linux)
 
-Pressione `CTRL + C` no terminal
+```bash
+docker-compose up -d
+```
 
-## 📚 Como Funciona
+### Docker (Windows Containers)
 
-### Interface Principal
+```bash
+docker-compose -f docker-compose.windows.yml up -d
+```
 
-A aplicação possui **3 abas principais**:
+### Windows Nativo
 
-#### 1️⃣ **Calendário**
-- Visualize todos os meses de 2026
-- Navegue com os botões "Anterior" e "Próximo"
-- Dias com eventos têm um ponto vermelho
-- Clique em qualquer dia para selecioná-lo
+```powershell
+windows\instalar_dependencias.bat
+windows\executar_agenda_windows.bat
+```
 
-#### 2️⃣ **Dia** (Grade de Horas)
-- Visualize os eventos do dia selecionado
-- Grade organizada de 00:00 até 23:00 (meia-noite à meia-noite)
-- Cada evento aparece na sua hora
-- Clique em um evento para editar
+## API
 
-#### 3️⃣ **Anotações**
-- **Lado Esquerdo**: Formulário para criar/editar eventos
-  - Data
-  - Hora
-  - Título
-  - Descrição/Anotações
-  - Duração (1 a 4 horas)
-  - Cor personalizada
-- **Lado Direito**: Lista de eventos do dia
-
-### Banco de Dados
-
-O SQLite armazena:
-- **ID**: Identificador único
-- **Data**: Data do evento (YYYY-MM-DD)
-- **Hora**: Hora do evento (HH:MM)
-- **Título**: Nome do evento
-- **Descrição**: Anotações e detalhes
-- **Duração**: Quantas horas dura (1-4)
-- **Cor**: Cor personalizável (hexadecimal)
-- **Criado em**: Timestamp de criação
-
-### API REST
-
-A aplicação usa uma API interna:
+### Eventos
 
 | Método | Endpoint | Descrição |
 |--------|----------|-----------|
-| GET | `/` | Abre a página principal |
-| GET | `/api/meses` | Retorna estrutura de todos os meses |
-| GET | `/api/eventos/<data>` | Retorna eventos de um dia |
-| POST | `/api/evento` | Cria novo evento |
-| PUT | `/api/evento/<id>` | Atualiza um evento |
-| DELETE | `/api/evento/<id>` | Deleta um evento |
+| GET | `/api/eventos/<data>` | Lista eventos do dia |
+| POST | `/api/evento` | Cria evento |
+| PUT | `/api/evento/<id>` | Atualiza evento |
+| DELETE | `/api/evento/<id>` | Remove evento |
 
-## 💡 Exemplos de Uso
+### Rotinas
 
-### Criar um Evento
+| Método | Endpoint | Descrição |
+|--------|----------|-----------|
+| GET | `/api/rotinas` | Lista todas as rotinas |
+| GET | `/api/rotinas/<data>` | Rotinas do dia |
+| POST | `/api/rotina` | Cria rotina |
+| PUT | `/api/rotina/<id>` | Atualiza rotina |
+| DELETE | `/api/rotina/<id>` | Remove rotina |
+| DELETE | `/api/rotinas` | Remove todas |
+| POST | `/api/rotinas/batch` | Cria rotinas em lote |
+| POST | `/api/rotina/<id>/gerar` | Gera eventos a partir de rotina |
 
-1. Abra a aba **"Anotações"**
-2. Selecione a data no calendário
-3. Escolha a hora
-4. Digite o título (ex: "Reunião com time")
-5. Adicione descrição (ex: "Discutir sprint 5")
-6. Escolha duração e cor
-7. Clique **"Salvar"**
+### Utilitários
 
-### Editar um Evento
+| Método | Endpoint | Descrição |
+|--------|----------|-----------|
+| GET | `/api/meses` | Estrutura de calendário 2026 |
+| GET | `/health` | Health check |
 
-1. Clique no evento na grade de horas ou na lista
-2. Um modal abrirá com os detalhes
-3. Modifique o que quiser
-4. Clique **"Atualizar"**
+### Exemplo de request
 
-### Deletar um Evento
-
-1. Clique no evento
-2. No modal, clique **"Deletar"**
-3. Confirme a exclusão
-
-## 🎨 Dicas de Produtividade
-
-- **Use cores**: Associe cores a categorias (azul=trabalho, verde=pessoal, etc)
-- **Seja específico**: Títulos claros e descritivos ajudam
-- **Planeje antecipadamente**: Preencha sua agenda com antecedência
-- **Revise regularmente**: Abra a agenda frequentemente para não perder compromissos
-- **Anotações detalhadas**: Use a descrição para detalhes importantes
-
-## ⚙️ Tecnologias Utilizadas
-
-- **Backend**: Python + Flask
-- **Frontend**: HTML5 + CSS3 + JavaScript (Vanilla)
-- **Banco de Dados**: SQLite
-- **Design**: CSS Grid e Flexbox para layout responsivo
-
-## 📱 Compatibilidade
-
-- ✅ Funciona em navegadores modernos (Chrome, Firefox, Safari, Edge)
-- ✅ Responsivo para diferentes tamanhos de tela
-- ✅ Requer Python 3.7+
-- ✅ Windows, macOS e Linux
-
-## 🔧 Troubleshooting
-
-### Erro: "ModuleNotFoundError: No module named 'flask'"
 ```bash
-pip install Flask==2.3.0
+curl -X POST http://localhost:5000/api/evento \
+  -H "Content-Type: application/json" \
+  -d '{
+    "data": "2026-06-07",
+    "hora": "14:00",
+    "titulo": "Reunião",
+    "descricao": "Sprint review",
+    "duracao": 2,
+    "cor": "#4285f4"
+  }'
 ```
 
-### Erro: "Port 5000 already in use"
-A porta 5000 já está em uso. Modifique no final do `app.py`:
+## Modelos
+
+### Evento
+
 ```python
-app.run(debug=True, port=5001)  # Ou outra porta
+{
+    "id": 1,
+    "data": "2026-06-07",
+    "hora": "14:00",
+    "titulo": "Reunião",
+    "descricao": "Sprint review",
+    "duracao": 2,
+    "cor": "#4285f4",
+    "criado_em": "2026-06-07T14:00:00"
+}
 ```
 
-### Banco de dados corrompido
-Delete o arquivo `database/agenda.db` e reinicie a aplicação. Um novo banco será criado automaticamente.
+### Rotina
 
-## 📝 Roadmap Futuro
+```python
+{
+    "id": 1,
+    "titulo": "Academia",
+    "descricao": "Treino de segunda, quarta e sexta",
+    "cor": "#34a853",
+    "dias_semana": [1, 3, 5],
+    "hora_inicio": "07:00",
+    "duracao": 2,
+    "data_inicio": "2026-01-01",
+    "data_fim": "2026-12-31",
+    "ativa": 1
+}
+```
 
-- [ ] Exportar agenda para PDF
-- [ ] Sincronizar com Google Calendar
-- [ ] Notificações de eventos
-- [ ] Marcação de tarefas concluídas
-- [ ] Backup automático
+## Desenvolvimento
 
-## 🎁 Enjoy Your Calendar!
+### Qualidade de código
 
-Organize sua vida, alcance seus objetivos e termine 2026 com sucesso! 🎯
+```bash
+black .
+flake8 .
+pytest
+```
 
----
+### Testes
 
-**Criado em**: 2026
-**Versão**: 1.0
+```bash
+pytest -v
+pytest --cov=app
+```
+
+## Docker
+
+### Build
+
+```bash
+docker-compose build
+```
+
+### Logs
+
+```bash
+docker-compose logs -f
+```
+
+### Parar
+
+```bash
+docker-compose down
+```
+
+## Deploy
+
+Para produção, recomenda-se:
+
+1. Usar PostgreSQL ao invés de SQLite
+2. Configurar `SECRET_KEY` forte
+3. Rodar atrás de Nginx ou Cloudflare
+4. Usar HTTPS
+5. Configurar backup automático do banco
+
+```bash
+# Exemplo com PostgreSQL
+export DATABASE_URL=postgresql://user:pass@host:5432/agenda2026
+gunicorn --bind 0.0.0.0:5000 --workers 4 app:app
+```
+
+## Comandos Úteis
+
+| Comando | Descrição |
+|---------|-----------|
+| `python app.py` | Executa em modo desenvolvimento |
+| `AGENDA_PORT=5001 python app.py` | Porta customizada |
+| `python -m py_compile app.py` | Verifica sintaxe |
+| `pytest` | Executa testes |
+| `black .` | Formata código |
+| `flake8 .` | Lint |
+
+## Roadmap
+
+- [ ] Autenticação de usuários
+- [ ] Exportação PDF/CSV
+- [ ] Notificações
+- [ ] Sincronização com Google Calendar
+- [ ] API versionamento (/api/v1)
+
+## Licença
+
+MIT

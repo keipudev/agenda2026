@@ -2,6 +2,12 @@
 __pycache__/
 *.pyc
 *.pyo
+*.pyd
+
+# Virtual environment
+.venv/
+venv/
+env/
 
 # Banco de dados local (backup antes)
 database/*.db
@@ -14,6 +20,11 @@ database/*.db-journal
 
 # Logs
 *.log
+
+# Testes
+.pytest_cache/
+htmlcov/
+.coverage
 
 # IDEs
 .IDE/
@@ -34,3 +45,10 @@ node_modules/
 # Scripts locais
 executar_agenda.bat
 sqllite.bat
+
+# Windows native runner
+windows/
+
+# Git
+.git/
+.gitignore

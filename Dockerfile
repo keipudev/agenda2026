@@ -19,13 +19,14 @@ RUN chown -R appuser:appuser /app
 ENV PATH=/opt/deps/bin:$PATH
 ENV PYTHONPATH=/opt/deps/lib/python3.11/site-packages
 ENV FLASK_APP=app.py
+ENV FLASK_DEBUG=0
+ENV AGENDA_PORT=5000
 
 EXPOSE 5000
 
 USER appuser
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-  CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:5000/')" || exit 1
+  CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:5000/health')" || exit 1
 
-CMD ["python", "app.py"]
-
+CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "4", "--threads", "2", "app:app"]
