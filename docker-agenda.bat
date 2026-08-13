@@ -1,7 +1,7 @@
 @echo off
-title Agenda 2026 - Docker Windows
+title Agenda 2026 - Docker
 echo ========================================
-echo    Agenda 2026 - Docker Windows
+echo          Agenda 2026 - Docker
 echo ========================================
 echo.
 
@@ -14,17 +14,41 @@ if errorlevel 1 (
     exit /b 1
 )
 
-REM Verificar se estamos no modo Windows Containers
+:MENU
+echo Escolha o modo Docker:
+echo.
+echo [1] Windows Containers
+echo [2] Linux Containers
+echo.
+set /p modo="Opcao (1 ou 2): "
+
+if "%modo%"=="1" (
+    set COMPOSE_FILE=docker-compose.windows.yml
+    set COMPOSE_CMD=docker-compose -f docker-compose.windows.yml
+) else if "%modo%"=="2" (
+    set COMPOSE_FILE=docker-compose.yml
+    set COMPOSE_CMD=docker-compose
+) else (
+    echo Opcao invalida.
+    goto MENU
+)
+
+echo.
+echo Modo selecionado: %COMPOSE_FILE%
+echo.
+
+REM Verificar se esta no modo correto
 docker info --format "{{.OperatingSystem}}" | findstr /C:"Windows" >nul
 if errorlevel 1 (
     echo AVISO: Docker parece estar no modo Linux Containers.
     echo Alternando para Windows Containers...
     "C:\Program Files\Docker\Docker\DockerCli.exe" -SwitchDaemon
     timeout /t 5 /nobreak >nul
+    echo.
 )
 
-echo Construindo imagem Windows...
-docker-compose -f docker-compose.windows.yml build
+echo Construindo imagem...
+%COMPOSE_CMD% build
 if errorlevel 1 (
     echo ERRO ao construir a imagem.
     pause
@@ -33,7 +57,7 @@ if errorlevel 1 (
 
 echo.
 echo Iniciando container...
-docker-compose -f docker-compose.windows.yml up -d
+%COMPOSE_CMD% up -d
 if errorlevel 1 (
     echo ERRO ao iniciar o container.
     pause
@@ -47,9 +71,9 @@ echo Acesse: http://localhost:5000
 echo ========================================
 echo.
 echo Comandos uteis:
-echo   - Ver logs: docker-compose -f docker-compose.windows.yml logs -f
-echo   - Parar: docker-compose -f docker-compose.windows.yml down
-echo   - Reiniciar: docker-compose -f docker-compose.windows.yml restart
+echo   - Ver logs: %COMPOSE_CMD% logs -f
+echo   - Parar: %COMPOSE_CMD% down
+echo   - Reiniciar: %COMPOSE_CMD% restart
 echo.
 
 pause
