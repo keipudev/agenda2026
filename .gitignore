@@ -8,3 +8,6 @@ database/*.db
 
 # Ambiente
 .env
+
+# Windows native runner
+windows/

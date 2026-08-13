@@ -1,20 +1,16 @@
-# Git
-.git/
-.gitignore
-
 # Python
 __pycache__/
 *.pyc
 *.pyo
-*.pyc
 
-# Database
+# Banco de dados local (backup antes)
 database/*.db
 database/*.db-journal
 
-# Environment
+# Ambiente
 .env
 .env.*
+*.env
 
 # Logs
 *.log
@@ -35,14 +31,6 @@ node_modules/
 .kilo/
 .postman/
 
-# Docker
-Dockerfile
-docker-compose.yml
-.dockerignore
-
-# Certificates (mounted at runtime)
-certs/
-
-# Scripts
+# Scripts locais
 executar_agenda.bat
 sqllite.bat
