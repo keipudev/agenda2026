@@ -86,7 +86,7 @@ python app.py
 
 Acesse: http://localhost:5000
 
-### Docker (Linux)
+### Docker (Linux/WSL2) - RECOMENDADO
 
 ```bash
 docker-compose up -d

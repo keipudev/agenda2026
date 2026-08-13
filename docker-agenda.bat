@@ -17,17 +17,17 @@ if errorlevel 1 (
 :MENU
 echo Escolha o modo Docker:
 echo.
-echo [1] Windows Containers
-echo [2] Linux Containers
+echo [1] Linux Containers (WSL2) - RECOMENDADO
+echo [2] Windows Containers - pode exigir Hyper-V
 echo.
 set /p modo="Opcao (1 ou 2): "
 
 if "%modo%"=="1" (
-    set COMPOSE_FILE=docker-compose.windows.yml
-    set COMPOSE_CMD=docker-compose -f docker-compose.windows.yml
-) else if "%modo%"=="2" (
     set COMPOSE_FILE=docker-compose.yml
     set COMPOSE_CMD=docker-compose
+) else if "%modo%"=="2" (
+    set COMPOSE_FILE=docker-compose.windows.yml
+    set COMPOSE_CMD=docker-compose -f docker-compose.windows.yml
 ) else (
     echo Opcao invalida.
     goto MENU
