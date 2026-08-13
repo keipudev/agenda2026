@@ -42,12 +42,6 @@ node_modules/
 .kilo/
 .postman/
 
-# Scripts locais
-executar_agenda.bat
-sqllite.bat
-docker-agenda.bat
-windows/
-
 # Git
 .git/
 .gitignore

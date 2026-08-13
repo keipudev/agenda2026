@@ -37,16 +37,6 @@ echo.
 echo Modo selecionado: %COMPOSE_FILE%
 echo.
 
-REM Verificar se esta no modo correto
-docker info --format "{{.OperatingSystem}}" | findstr /C:"Windows" >nul
-if errorlevel 1 (
-    echo AVISO: Docker parece estar no modo Linux Containers.
-    echo Alternando para Windows Containers...
-    "C:\Program Files\Docker\Docker\DockerCli.exe" -SwitchDaemon
-    timeout /t 5 /nobreak >nul
-    echo.
-)
-
 echo Construindo imagem...
 %COMPOSE_CMD% build
 if errorlevel 1 (
