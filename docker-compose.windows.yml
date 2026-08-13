@@ -5,7 +5,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.windows
-    container_name: agenda2026
+    container_name: agenda2026-windows
     restart: unless-stopped
     environment:
       - FLASK_DEBUG=0
@@ -17,7 +17,7 @@ services:
     ports:
       - "5000:5000"
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/')"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/health')"]
       interval: 30s
       timeout: 10s
       retries: 3

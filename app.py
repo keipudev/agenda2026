@@ -1,506 +1,503 @@
-from flask import Flask, render_template, request, jsonify
-from datetime import datetime, timedelta
-import sqlite3
-import json
 import os
+import json
+from datetime import datetime, timedelta
+from typing import Optional, List
 
-app = Flask(__name__)
+from flask import Flask, request, jsonify
+from flask_cors import CORS
+from dotenv import load_dotenv
+from pydantic import BaseModel, ValidationError, Field
 
-# Caminho do banco de dados
-DB_PATH = 'database/agenda.db'
+from flask_sqlalchemy import SQLAlchemy
+
+load_dotenv()
+
+
+class Config:
+    SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-key")
+    DEBUG = os.getenv("FLASK_DEBUG", "0") == "1"
+    SQLALCHEMY_DATABASE_URI = os.getenv("DATABASE_URL", "sqlite:///database/agenda.db")
+    SQLALCHEMY_TRACK_MODIFICATIONS = False
+    AGENDA_PORT = int(os.getenv("AGENDA_PORT", 5000))
+
+
+db = SQLAlchemy()
+
+
+class Evento(db.Model):
+    __tablename__ = "eventos"
+
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    data = db.Column(db.String(10), nullable=False)
+    hora = db.Column(db.String(5), nullable=False)
+    titulo = db.Column(db.String(200), nullable=False)
+    descricao = db.Column(db.Text, default="")
+    duracao = db.Column(db.Integer, default=1)
+    cor = db.Column(db.String(7), default="#3498db")
+    criado_em = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def to_dict(self) -> dict:
+        return {
+            "id": self.id,
+            "data": self.data,
+            "hora": self.hora,
+            "titulo": self.titulo,
+            "descricao": self.descricao,
+            "duracao": self.duracao,
+            "cor": self.cor,
+            "criado_em": self.criado_em.isoformat() if self.criado_em else None,
+        }
+
+
+class Rotina(db.Model):
+    __tablename__ = "rotinas"
+
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    titulo = db.Column(db.String(200), nullable=False)
+    descricao = db.Column(db.Text, default="")
+    cor = db.Column(db.String(7), default="#4285f4")
+    dias_semana = db.Column(db.Text, nullable=False)
+    hora_inicio = db.Column(db.String(5), nullable=False)
+    duracao = db.Column(db.Integer, default=2)
+    data_inicio = db.Column(db.String(10), nullable=False)
+    data_fim = db.Column(db.String(10), nullable=True)
+    ativa = db.Column(db.Integer, default=1)
+    criado_em = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def to_dict(self) -> dict:
+        return {
+            "id": self.id,
+            "titulo": self.titulo,
+            "descricao": self.descricao,
+            "cor": self.cor,
+            "dias_semana": json.loads(self.dias_semana),
+            "hora_inicio": self.hora_inicio,
+            "duracao": self.duracao,
+            "data_inicio": self.data_inicio,
+            "data_fim": self.data_fim,
+            "ativa": self.ativa,
+            "criado_em": self.criado_em.isoformat() if self.criado_em else None,
+        }
+
+
+class EventoSchema(BaseModel):
+    data: str = Field(..., description="Data no formato YYYY-MM-DD")
+    hora: str = Field(..., description="Hora no formato HH:MM")
+    titulo: str = Field(..., min_length=1, description="Título do evento")
+    descricao: Optional[str] = Field(default="", description="Descrição do evento")
+    duracao: int = Field(default=1, ge=1, description="Duração em horas")
+    cor: Optional[str] = Field(default="#3498db", description="Cor em hexadecimal")
+
+
+class RotinaSchema(BaseModel):
+    titulo: str = Field(..., min_length=1)
+    descricao: Optional[str] = Field(default="")
+    cor: Optional[str] = Field(default="#4285f4")
+    dias_semana: List[int] = Field(..., description="Lista de dias da semana (0=Dom, 6=Sáb)")
+    hora_inicio: str = Field(..., description="Hora no formato HH:MM")
+    duracao: int = Field(default=2, ge=1)
+    data_inicio: str = Field(..., description="Data no formato YYYY-MM-DD")
+    data_fim: Optional[str] = Field(default=None, description="Data no formato YYYY-MM-DD")
+    ativa: int = Field(default=1)
+
+
+class RotinaBatchSchema(BaseModel):
+    rotinas: List[RotinaSchema]
+
 
 def init_db():
-    """Inicializa o banco de dados"""
-    if not os.path.exists('database'):
-        os.makedirs('database')
-    
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS eventos (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            data TEXT NOT NULL,
-            hora TEXT NOT NULL,
-            titulo TEXT NOT NULL,
-            descricao TEXT,
-            duracao INTEGER DEFAULT 1,
-            cor TEXT DEFAULT '#3498db',
-            criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    ''')
-    
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS rotinas (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            titulo TEXT NOT NULL,
-            descricao TEXT,
-            cor TEXT DEFAULT '#4285f4',
-            dias_semana TEXT NOT NULL,
-            hora_inicio TEXT NOT NULL,
-            duracao INTEGER DEFAULT 2,
-            data_inicio TEXT NOT NULL,
-            data_fim TEXT,
-            ativa INTEGER DEFAULT 1,
-            criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    ''')
-    
-    conn.commit()
-    conn.close()
+    with app.app_context():
+        db.create_all()
 
-def get_db():
-    """Retorna conexão com o banco de dados"""
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    return conn
 
-@app.route('/')
-def index():
-    """Página principal"""
-    return render_template('index.html')
+def create_app() -> Flask:
+    app = Flask(__name__)
+    app.config.from_object(Config)
 
-@app.route('/api/eventos/<data>')
-def get_eventos(data):
-    """Retorna eventos de um dia específico"""
-    conn = get_db()
-    cursor = conn.cursor()
-    
-    cursor.execute('''
-        SELECT * FROM eventos 
-        WHERE data = ? 
-        ORDER BY hora
-    ''', (data,))
-    
-    eventos = [dict(row) for row in cursor.fetchall()]
-    conn.close()
-    
-    return jsonify(eventos)
+    CORS(app)
+    db.init_app(app)
 
-@app.route('/api/evento', methods=['POST'])
-def criar_evento():
-    """Cria novo evento"""
-    data = request.json
-    
-    # Validação de dados - verificar campos obrigatórios primeiro
-    if not data.get('data') or not data.get('hora'):
-        return jsonify({'error': 'Data e hora são obrigatórias'}), 400
-    
-    if not data.get('titulo'):
-        return jsonify({'error': 'Título é obrigatório'}), 400
-    
-    try:
-        datetime.strptime(data['data'], '%Y-%m-%d')
-        datetime.strptime(data['hora'], '%H:%M')
-    except ValueError:
-        return jsonify({'error': 'Data ou hora inválida'}), 400
-    
-    conn = get_db()
-    cursor = conn.cursor()
-    
-    cursor.execute('''
-        INSERT INTO eventos (data, hora, titulo, descricao, duracao, cor)
-        VALUES (?, ?, ?, ?, ?, ?)
-    ''', (
-        data['data'],
-        data['hora'],
-        data['titulo'],
-        data.get('descricao', ''),
-        data.get('duracao', 1),
-        data.get('cor', '#3498db')
-    ))
-    
-    conn.commit()
-    id_evento = cursor.lastrowid
-    conn.close()
-    
-    return jsonify({'id': id_evento, 'status': 'sucesso'})
+    with app.app_context():
+        db.create_all()
 
-@app.route('/api/evento/<int:id>', methods=['PUT'])
-def atualizar_evento(id):
-    """Atualiza um evento existente"""
-    data = request.json
-    
-    # Validação
-    if 'titulo' not in data:
-        return jsonify({'error': 'Título é obrigatório'}), 400
-    
-    conn = get_db()
-    cursor = conn.cursor()
-    
-    cursor.execute('''
-        UPDATE eventos 
-        SET titulo=?, descricao=?, duracao=?, cor=?
-        WHERE id=?
-    ''', (
-        data['titulo'],
-        data.get('descricao', ''),
-        data.get('duracao', 1),
-        data.get('cor', '#3498db'),
-        id
-    ))
-    
-    conn.commit()
-    conn.close()
-    
-    return jsonify({'status': 'atualizado'})
+    register_routes(app)
+    register_error_handlers(app)
 
-@app.route('/api/evento/<int:id>', methods=['DELETE'])
-def deletar_evento(id):
-    """Deleta um evento"""
-    conn = get_db()
-    cursor = conn.cursor()
-    
-    cursor.execute('DELETE FROM eventos WHERE id = ?', (id,))
-    
-    conn.commit()
-    conn.close()
-    
-    return jsonify({'status': 'deletado'})
+    return app
 
-# Rotas API para Rotinas
-@app.route('/api/rotinas')
-def get_rotinas():
-    """Retorna todas as rotinas"""
-    conn = get_db()
-    cursor = conn.cursor()
-    
-    cursor.execute('SELECT * FROM rotinas ORDER BY data_inicio')
-    rotinas = [dict(row) for row in cursor.fetchall()]
-    
-    conn.close()
-    
-    return jsonify(rotinas)
 
-@app.route('/api/rotinas/<data>')
-def get_rotinas_do_dia(data):
-    """Retorna rotinas ativas para um dia específico"""
-    try:
-        datetime.strptime(data, '%Y-%m-%d')
-    except ValueError:
-        return jsonify({'error': 'Data inválida'}), 400
-    
-    conn = get_db()
-    cursor = conn.cursor()
-    
-    cursor.execute('SELECT * FROM rotinas WHERE ativa = 1')
-    rotinas = cursor.fetchall()
-    conn.close()
-    
-    data_ref = datetime.strptime(data, '%Y-%m-%d')
-    dia_semana = (data_ref.weekday() + 1) % 7
-    
-    rotinas_do_dia = []
-    for rotina in rotinas:
-        rotina = dict(rotina)
-        dias_semana = json.loads(rotina['dias_semana'])
-        
-        if dia_semana not in dias_semana:
-            continue
-        
-        data_inicio = datetime.strptime(rotina['data_inicio'], '%Y-%m-%d')
-        data_fim = rotina['data_fim']
-        if data_fim:
-            data_fim = datetime.strptime(data_fim, '%Y-%m-%d')
-        else:
-            data_fim = None
-        
-        if data_fim and data_ref > data_fim:
-            continue
-        if data_ref < data_inicio:
-            continue
-        
-        rotinas_do_dia.append(rotina)
-    
-    return jsonify(rotinas_do_dia)
-
-@app.route('/api/rotina', methods=['POST'])
-def criar_rotina():
-    """Cria nova rotina"""
-    data = request.json
-    
-    # Validação
-    if not data.get('titulo') or not data.get('dias_semana'):
-        return jsonify({'error': 'Título e dias da semana são obrigatórios'}), 400
-    
-    conn = get_db()
-    cursor = conn.cursor()
-    
-    cursor.execute('''
-        INSERT INTO rotinas (titulo, descricao, cor, dias_semana, hora_inicio, duracao, data_inicio, data_fim, ativa)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    ''', (
-        data['titulo'],
-        data.get('descricao', ''),
-        data.get('cor', '#4285f4'),
-        json.dumps(data['dias_semana']),
-        data['hora_inicio'],
-        data.get('duracao', 2),
-        data['data_inicio'],
-        data.get('data_fim') or None,
-        1
-    ))
-    
-    conn.commit()
-    id_rotina = cursor.lastrowid
-    conn.close()
-    
-    return jsonify({'id': id_rotina, 'status': 'sucesso'})
-
-@app.route('/api/rotina/<int:id>', methods=['PUT'])
-def atualizar_rotina(id):
-    """Atualiza uma rotina existente"""
-    data = request.json
-    
-    if 'titulo' not in data:
-        return jsonify({'error': 'Título é obrigatório'}), 400
-    
-    conn = get_db()
-    cursor = conn.cursor()
-    
-    cursor.execute('''
-        UPDATE rotinas 
-        SET titulo=?, descricao=?, cor=?, dias_semana=?, hora_inicio=?, duracao=?, data_inicio=?, data_fim=?, ativa=?
-        WHERE id=?
-    ''', (
-        data['titulo'],
-        data.get('descricao', ''),
-        data.get('cor', '#4285f4'),
-        json.dumps(data.get('dias_semana', [])),
-        data.get('hora_inicio'),
-        data.get('duracao', 2),
-        data.get('data_inicio'),
-        data.get('data_fim') or None,
-        data.get('ativa', 1),
-        id
-    ))
-    
-    conn.commit()
-    conn.close()
-    
-    return jsonify({'status': 'atualizado'})
-
-@app.route('/api/rotina/<int:id>', methods=['DELETE'])
-def deletar_rotina(id):
-    """Deleta uma rotina"""
-    conn = get_db()
-    cursor = conn.cursor()
-    
-    cursor.execute('DELETE FROM rotinas WHERE id = ?', (id,))
-    
-    conn.commit()
-    conn.close()
-    
-    return jsonify({'status': 'deletado'})
-
-@app.route('/api/rotinas', methods=['DELETE'])
-def deletar_todas_rotinas():
-    """Deleta todas as rotinas"""
-    conn = get_db()
-    cursor = conn.cursor()
-    
-    cursor.execute('DELETE FROM rotinas')
-    
-    conn.commit()
-    conn.close()
-    
-    return jsonify({'status': 'todas_deletadas'})
-
-@app.route('/api/rotinas/batch', methods=['POST'])
-def criar_rotinas_batch():
-    """Cria múltiplas rotinas de uma vez"""
-    data = request.json or {}
-    rotinas = data.get('rotinas', [])
-    
-    if not rotinas:
-        return jsonify({'error': 'Nenhuma rotina fornecida'}), 400
-    
-    conn = get_db()
-    cursor = conn.cursor()
-    
-    ids_criados = []
-    for rotina in rotinas:
-        if not rotina.get('titulo') or not rotina.get('dias_semana'):
-            continue
-        
-        cursor.execute('''
-            INSERT INTO rotinas (titulo, descricao, cor, dias_semana, hora_inicio, duracao, data_inicio, data_fim, ativa)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ''', (
-            rotina['titulo'],
-            rotina.get('descricao', ''),
-            rotina.get('cor', '#4285f4'),
-            json.dumps(rotina.get('dias_semana', [])),
-            rotina.get('hora_inicio', '09:00'),
-            rotina.get('duracao', 2),
-            rotina.get('data_inicio', datetime.now().strftime('%Y-%m-%d')),
-            rotina.get('data_fim') or None,
-            1
-        ))
-        ids_criados.append(cursor.lastrowid)
-    
-    conn.commit()
-    conn.close()
-    
-    return jsonify({'ids': ids_criados, 'status': 'sucesso'})
-
-@app.route('/api/rotina/<int:id>/gerar', methods=['POST'])
-def gerar_eventos_rotina(id):
-    """Gera eventos a partir de uma rotina"""
-    conn = get_db()
-    cursor = conn.cursor()
-    
-    cursor.execute('SELECT * FROM rotinas WHERE id = ?', (id,))
-    rotina = cursor.fetchone()
-    
-    if not rotina:
-        conn.close()
-        return jsonify({'error': 'Rotina não encontrada'}), 404
-    
-    rotina = dict(rotina)
-    dias_semana = json.loads(rotina['dias_semana'])
-    
-    # Usar período do body se fornecido, senão usar da rotina
-    body = request.json or {}
-    data_inicio = body.get('data_inicio', rotina['data_inicio'])
-    data_fim = body.get('data_fim', rotina['data_fim'])
-    
-    if not data_fim:
-        data_fim = '2026-12-31'
-    
-    # Gerar datas
-    try:
-        inicio = datetime.strptime(data_inicio, '%Y-%m-%d')
-        fim = datetime.strptime(data_fim, '%Y-%m-%d')
-    except ValueError:
-        conn.close()
-        return jsonify({'error': 'Data inválida'}), 400
-    
-    count = 0
-    atual = inicio
-    
-    # weekday() no Python: 0=Seg, 6=Dom - mas dias_semana usa 0=Dom, 6=Sab
-    # precisamos converter
-    while atual <= fim:
-        # Converter: 0=Dom (dias_semana) -> 6 (weekday), 1=Seg -> 0, etc
-        dow_em_js = atual.weekday()  # 0=Seg, 6=Dom
-        dow_em_rotina = (dow_em_js + 1) % 7  # 0=Dom, 6=Sab
-        
-        if dow_em_rotina in dias_semana:
-            data_str = atual.strftime('%Y-%m-%d')
-            
-            # Verificar se evento já existe
-            cursor.execute('SELECT id FROM eventos WHERE data = ? AND hora = ? AND titulo = ?', 
-                (data_str, rotina['hora_inicio'], rotina['titulo']))
-            
-            if not cursor.fetchone():
-                cursor.execute('''
-                    INSERT INTO eventos (data, hora, titulo, descricao, duracao, cor)
-                    VALUES (?, ?, ?, ?, ?, ?)
-                ''', (
-                    data_str,
-                    rotina['hora_inicio'],
-                    rotina['titulo'],
-                    rotina['descricao'],
-                    rotina['duracao'],
-                    rotina['cor']
-                ))
-                count += 1
-        
-        atual += timedelta(days=1)
-    
-    conn.commit()
-    conn.close()
-    
-    return jsonify({'status': 'sucesso', 'eventos_criados': count})
-
-@app.route('/api/meses')
-def get_meses():
-    """Retorna calendário dos meses até final de 2026"""
-    conn = get_db()
-    cursor = conn.cursor()
-    
-    # Pega todos os eventos para saber quais dias têm eventos
-    cursor.execute('SELECT DISTINCT data FROM eventos')
-    datas_com_eventos = set(row[0] for row in cursor.fetchall())
-    
-    # Pega todas as rotinas ativas para calcular dias com rotinas
-    cursor.execute('SELECT * FROM rotinas WHERE ativa = 1')
-    rotinas = cursor.fetchall()
-    conn.close()
-    
-    # Calcula datas que têm rotinas ativas
-    datas_com_rotinas = set()
-    for rotina in rotinas:
-        rotina = dict(rotina)
-        dias_semana = json.loads(rotina['dias_semana'])
-        
-        try:
-            data_inicio = datetime.strptime(rotina['data_inicio'], '%Y-%m-%d')
-            data_fim = rotina['data_fim']
-            if data_fim:
-                data_fim = datetime.strptime(data_fim, '%Y-%m-%d')
-            else:
-                data_fim = datetime(2026, 12, 31)
-        except (ValueError, TypeError):
-            continue
-        
-        atual = data_inicio
-        while atual <= data_fim:
-            # Converter: 0=Dom (dias_semana) -> 6 (weekday), 1=Seg -> 0, etc
-            dow_em_js = atual.weekday()
-            dow_em_rotina = (dow_em_js + 1) % 7
-            
-            if dow_em_rotina in dias_semana:
-                datas_com_rotinas.add(atual.strftime('%Y-%m-%d'))
-            atual += timedelta(days=1)
-    
-    meses = []
-    hoje = datetime(2026, 1, 1)
-    final = datetime(2026, 12, 31)
-    
-    while hoje <= final:
-        primeiro_dia = datetime(hoje.year, hoje.month, 1)
-        if hoje.month == 12:
-            ultimo_dia = datetime(hoje.year, 12, 31)
-        else:
-            ultimo_dia = datetime(hoje.year, hoje.month + 1, 1) - timedelta(days=1)
-        
-        # Calcula dias vazios no início para o calendário começar no Domingo
-        dias = []
-        num_dias = (ultimo_dia - primeiro_dia).days + 1
-        primeiro_dow = primeiro_dia.weekday()  # 0=Seg, 6=Dom
-        
-        # Se queremos Domingo primeiro:
-        # Segunda (weekday=0): 1 dia vazio (Dom)
-        # Domingo (weekday=6): 0 dias vazios
-        for _ in range((primeiro_dow + 1) % 7):
-            dias.append(None)
-        
-        # Dias do mês
-        for d in range(1, num_dias + 1):
-            data_str = primeiro_dia.replace(day=d).strftime('%Y-%m-%d')
-            dia_info = {
-                'dia': d,
-                'data': data_str,
-                'tem_eventos': data_str in datas_com_eventos
-            }
-            if data_str in datas_com_rotinas:
-                dia_info['tem_rotinas'] = True
-            dias.append(dia_info)
-        
-        meses.append({
-            'mes': primeiro_dia.strftime('%Y-%m'),
-            'nome_mes': primeiro_dia.strftime('%B'),
-            'ano': hoje.year,
-            'dias': dias
+def register_routes(app: Flask):
+    @app.get("/")
+    def index():
+        return jsonify({
+            "name": "Agenda 2026 API",
+            "version": "1.0",
+            "status": "running",
+            "docs": "/api/meses",
         })
-        
-        hoje = ultimo_dia + timedelta(days=1)
-    
-    return jsonify(meses)
 
-if __name__ == '__main__':
-    init_db()
-    port = int(os.environ.get('AGENDA_PORT', 5000))
-    app.run(debug=True, host='0.0.0.0', port=port)
+    @app.get("/health")
+    def health():
+        return jsonify({"status": "healthy"}), 200
+
+    @app.get("/api/meses")
+    def get_meses():
+        try:
+            eventos = Evento.query.all()
+            rotinas = Rotina.query.filter_by(ativa=1).all()
+
+            datas_com_eventos = {ev.data for ev in eventos}
+            datas_com_rotinas = set()
+
+            for rotina in rotinas:
+                try:
+                    data_inicio = datetime.strptime(rotina.data_inicio, "%Y-%m-%d")
+                    data_fim = datetime.strptime(rotina.data_fim, "%Y-%m-%d") if rotina.data_fim else datetime(2026, 12, 31)
+                except (ValueError, TypeError):
+                    continue
+
+                dias_semana = json.loads(rotina.dias_semana)
+                atual = data_inicio
+                while atual <= data_fim:
+                    dow_rotina = (atual.weekday() + 1) % 7
+                    if dow_rotina in dias_semana:
+                        datas_com_rotinas.add(atual.strftime("%Y-%m-%d"))
+                    atual += timedelta(days=1)
+
+            meses = []
+            hoje = datetime(2026, 1, 1)
+            final = datetime(2026, 12, 31)
+
+            while hoje <= final:
+                primeiro_dia = datetime(hoje.year, hoje.month, 1)
+                if hoje.month == 12:
+                    ultimo_dia = datetime(hoje.year, 12, 31)
+                else:
+                    ultimo_dia = datetime(hoje.year, hoje.month + 1, 1) - timedelta(days=1)
+
+                dias = []
+                num_dias = (ultimo_dia - primeiro_dia).days + 1
+
+                for _ in range((primeiro_dia.weekday() + 1) % 7):
+                    dias.append(None)
+
+                for d in range(1, num_dias + 1):
+                    data_str = primeiro_dia.replace(day=d).strftime("%Y-%m-%d")
+                    dia_info = {
+                        "dia": d,
+                        "data": data_str,
+                        "tem_eventos": data_str in datas_com_eventos,
+                    }
+                    if data_str in datas_com_rotinas:
+                        dia_info["tem_rotinas"] = True
+                    dias.append(dia_info)
+
+                meses.append({
+                    "mes": primeiro_dia.strftime("%Y-%m"),
+                    "nome_mes": primeiro_dia.strftime("%B"),
+                    "ano": hoje.year,
+                    "dias": dias,
+                })
+
+                hoje = ultimo_dia + timedelta(days=1)
+
+            return jsonify(meses)
+        except Exception as e:
+            app.logger.error(f"Erro em /api/meses: {str(e)}")
+            return jsonify({"error": "Erro interno do servidor"}), 500
+
+    @app.get("/api/eventos/<data>")
+    def get_eventos(data: str):
+        try:
+            datetime.strptime(data, "%Y-%m-%d")
+        except ValueError:
+            return jsonify({"error": "Formato de data inválido. Use YYYY-MM-DD"}), 400
+
+        try:
+            eventos = Evento.query.filter_by(data=data).order_by(Evento.hora).all()
+            return jsonify([ev.to_dict() for ev in eventos])
+        except Exception as e:
+            app.logger.error(f"Erro em /api/eventos/{data}: {str(e)}")
+            return jsonify({"error": "Erro interno do servidor"}), 500
+
+    @app.post("/api/evento")
+    def criar_evento():
+        try:
+            payload = EventoSchema(**request.get_json(force=True))
+        except ValidationError as e:
+            return jsonify({"error": "Dados inválidos", "details": e.errors()}), 400
+        except Exception:
+            return jsonify({"error": "Corpo da requisição inválido"}), 400
+
+        try:
+            evento = Evento(
+                data=payload.data,
+                hora=payload.hora,
+                titulo=payload.titulo,
+                descricao=payload.descricao or "",
+                duracao=payload.duracao,
+                cor=payload.cor or "#3498db",
+            )
+            db.session.add(evento)
+            db.session.commit()
+            return jsonify({"id": evento.id, "status": "sucesso"}), 201
+        except Exception as e:
+            db.session.rollback()
+            app.logger.error(f"Erro em POST /api/evento: {str(e)}")
+            return jsonify({"error": "Erro ao criar evento"}), 500
+
+    @app.put("/api/evento/<int:id>")
+    def atualizar_evento(id: int):
+        evento = Evento.query.get_or_404(id, description="Evento não encontrado")
+
+        data = request.get_json(force=True) or {}
+        if "titulo" not in data or not str(data["titulo"]).strip():
+            return jsonify({"error": "Título é obrigatório"}), 400
+
+        try:
+            evento.titulo = data.get("titulo", evento.titulo)
+            evento.descricao = data.get("descricao", evento.descricao)
+            evento.duracao = data.get("duracao", evento.duracao)
+            evento.cor = data.get("cor", evento.cor)
+            db.session.commit()
+            return jsonify({"status": "atualizado"})
+        except Exception as e:
+            db.session.rollback()
+            app.logger.error(f"Erro em PUT /api/evento/{id}: {str(e)}")
+            return jsonify({"error": "Erro ao atualizar evento"}), 500
+
+    @app.delete("/api/evento/<int:id>")
+    def deletar_evento(id: int):
+        evento = Evento.query.get_or_404(id, description="Evento não encontrado")
+        try:
+            db.session.delete(evento)
+            db.session.commit()
+            return jsonify({"status": "deletado"})
+        except Exception as e:
+            db.session.rollback()
+            app.logger.error(f"Erro em DELETE /api/evento/{id}: {str(e)}")
+            return jsonify({"error": "Erro ao deletar evento"}), 500
+
+    @app.get("/api/rotinas")
+    def get_rotinas():
+        try:
+            rotinas = Rotina.query.order_by(Rotina.data_inicio).all()
+            return jsonify([r.to_dict() for r in rotinas])
+        except Exception as e:
+            app.logger.error(f"Erro em GET /api/rotinas: {str(e)}")
+            return jsonify({"error": "Erro interno do servidor"}), 500
+
+    @app.get("/api/rotinas/<data>")
+    def get_rotinas_do_dia(data: str):
+        try:
+            datetime.strptime(data, "%Y-%m-%d")
+        except ValueError:
+            return jsonify({"error": "Data inválida"}), 400
+
+        try:
+            rotinas = Rotina.query.filter_by(ativa=1).all()
+            data_ref = datetime.strptime(data, "%Y-%m-%d")
+            dia_semana = (data_ref.weekday() + 1) % 7
+
+            rotinas_do_dia = []
+            for rotina in rotinas:
+                r = rotina.to_dict()
+                if dia_semana not in r["dias_semana"]:
+                    continue
+
+                data_inicio = datetime.strptime(r["data_inicio"], "%Y-%m-%d")
+                data_fim = datetime.strptime(r["data_fim"], "%Y-%m-%d") if r["data_fim"] else None
+
+                if data_fim and data_ref > data_fim:
+                    continue
+                if data_ref < data_inicio:
+                    continue
+
+                rotinas_do_dia.append(r)
+
+            return jsonify(rotinas_do_dia)
+        except Exception as e:
+            app.logger.error(f"Erro em GET /api/rotinas/{data}: {str(e)}")
+            return jsonify({"error": "Erro interno do servidor"}), 500
+
+    @app.post("/api/rotina")
+    def criar_rotina():
+        try:
+            payload = RotinaSchema(**request.get_json(force=True))
+        except ValidationError as e:
+            return jsonify({"error": "Dados inválidos", "details": e.errors()}), 400
+        except Exception:
+            return jsonify({"error": "Corpo da requisição inválido"}), 400
+
+        try:
+            rotina = Rotina(
+                titulo=payload.titulo,
+                descricao=payload.descricao or "",
+                cor=payload.cor or "#4285f4",
+                dias_semana=json.dumps(payload.dias_semana),
+                hora_inicio=payload.hora_inicio,
+                duracao=payload.duracao,
+                data_inicio=payload.data_inicio,
+                data_fim=payload.data_fim,
+                ativa=payload.ativa,
+            )
+            db.session.add(rotina)
+            db.session.commit()
+            return jsonify({"id": rotina.id, "status": "sucesso"}), 201
+        except Exception as e:
+            db.session.rollback()
+            app.logger.error(f"Erro em POST /api/rotina: {str(e)}")
+            return jsonify({"error": "Erro ao criar rotina"}), 500
+
+    @app.put("/api/rotina/<int:id>")
+    def atualizar_rotina(id: int):
+        rotina = Rotina.query.get_or_404(id, description="Rotina não encontrada")
+
+        data = request.get_json(force=True) or {}
+        if "titulo" not in data or not str(data["titulo"]).strip():
+            return jsonify({"error": "Título é obrigatório"}), 400
+
+        try:
+            rotina.titulo = data.get("titulo", rotina.titulo)
+            rotina.descricao = data.get("descricao", rotina.descricao)
+            rotina.cor = data.get("cor", rotina.cor)
+            rotina.dias_semana = json.dumps(data.get("dias_semana", json.loads(rotina.dias_semana)))
+            rotina.hora_inicio = data.get("hora_inicio", rotina.hora_inicio)
+            rotina.duracao = data.get("duracao", rotina.duracao)
+            rotina.data_inicio = data.get("data_inicio", rotina.data_inicio)
+            rotina.data_fim = data.get("data_fim") or None
+            rotina.ativa = data.get("ativa", rotina.ativa)
+            db.session.commit()
+            return jsonify({"status": "atualizado"})
+        except Exception as e:
+            db.session.rollback()
+            app.logger.error(f"Erro em PUT /api/rotina/{id}: {str(e)}")
+            return jsonify({"error": "Erro ao atualizar rotina"}), 500
+
+    @app.delete("/api/rotina/<int:id>")
+    def deletar_rotina(id: int):
+        rotina = Rotina.query.get_or_404(id, description="Rotina não encontrada")
+        try:
+            db.session.delete(rotina)
+            db.session.commit()
+            return jsonify({"status": "deletado"})
+        except Exception as e:
+            db.session.rollback()
+            app.logger.error(f"Erro em DELETE /api/rotina/{id}: {str(e)}")
+            return jsonify({"error": "Erro ao deletar rotina"}), 500
+
+    @app.delete("/api/rotinas")
+    def deletar_todas_rotinas():
+        try:
+            Rotina.query.delete()
+            db.session.commit()
+            return jsonify({"status": "todas_deletadas"})
+        except Exception as e:
+            db.session.rollback()
+            app.logger.error(f"Erro em DELETE /api/rotinas: {str(e)}")
+            return jsonify({"error": "Erro ao deletar rotinas"}), 500
+
+    @app.post("/api/rotinas/batch")
+    def criar_rotinas_batch():
+        try:
+            payload = RotinaBatchSchema(**request.get_json(force=True))
+        except ValidationError as e:
+            return jsonify({"error": "Dados inválidos", "details": e.errors()}), 400
+        except Exception:
+            return jsonify({"error": "Corpo da requisição inválido"}), 400
+
+        try:
+            ids_criados = []
+            for item in payload.rotinas:
+                rotina = Rotina(
+                    titulo=item.titulo,
+                    descricao=item.descricao or "",
+                    cor=item.cor or "#4285f4",
+                    dias_semana=json.dumps(item.dias_semana),
+                    hora_inicio=item.hora_inicio,
+                    duracao=item.duracao,
+                    data_inicio=item.data_inicio,
+                    data_fim=item.data_fim,
+                    ativa=item.ativa,
+                )
+                db.session.add(rotina)
+                ids_criados.append(rotina.id)
+
+            db.session.commit()
+            return jsonify({"ids": ids_criados, "status": "sucesso"}), 201
+        except Exception as e:
+            db.session.rollback()
+            app.logger.error(f"Erro em POST /api/rotinas/batch: {str(e)}")
+            return jsonify({"error": "Erro ao criar rotinas em lote"}), 500
+
+    @app.post("/api/rotina/<int:id>/gerar")
+    def gerar_eventos_rotina(id: int):
+        rotina = Rotina.query.get_or_404(id, description="Rotina não encontrada")
+
+        body = request.get_json(force=True) or {}
+        data_inicio = body.get("data_inicio", rotina.data_inicio)
+        data_fim = body.get("data_fim", rotina.data_fim) or "2026-12-31"
+
+        try:
+            inicio = datetime.strptime(data_inicio, "%Y-%m-%d")
+            fim = datetime.strptime(data_fim, "%Y-%m-%d")
+        except ValueError:
+            return jsonify({"error": "Data inválida"}), 400
+
+        try:
+            count = 0
+            atual = inicio
+            dias_semana = json.loads(rotina.dias_semana)
+
+            while atual <= fim:
+                dow_rotina = (atual.weekday() + 1) % 7
+                if dow_rotina in dias_semana:
+                    data_str = atual.strftime("%Y-%m-%d")
+                    existe = Evento.query.filter_by(
+                        data=data_str, hora=rotina.hora_inicio, titulo=rotina.titulo
+                    ).first()
+
+                    if not existe:
+                        evento = Evento(
+                            data=data_str,
+                            hora=rotina.hora_inicio,
+                            titulo=rotina.titulo,
+                            descricao=rotina.descricao,
+                            duracao=rotina.duracao,
+                            cor=rotina.cor,
+                        )
+                        db.session.add(evento)
+                        count += 1
+
+                atual += timedelta(days=1)
+
+            db.session.commit()
+            return jsonify({"status": "sucesso", "eventos_criados": count})
+        except Exception as e:
+            db.session.rollback()
+            app.logger.error(f"Erro em POST /api/rotina/{id}/gerar: {str(e)}")
+            return jsonify({"error": "Erro ao gerar eventos"}), 500
+
+
+def register_error_handlers(app: Flask):
+    @app.errorhandler(404)
+    def not_found(e):
+        return jsonify({"error": "Recurso não encontrado"}), 404
+
+    @app.errorhandler(405)
+    def method_not_allowed(e):
+        return jsonify({"error": "Método não permitido"}), 405
+
+    @app.errorhandler(500)
+    def internal_error(e):
+        db.session.rollback()
+        return jsonify({"error": "Erro interno do servidor"}), 500
+
+
+app = create_app()
+
+if __name__ == "__main__":
+    with app.app_context():
+        db.create_all()
+    port = Config.AGENDA_PORT
+    app.run(host="0.0.0.0", port=port, debug=Config.DEBUG)
