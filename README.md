@@ -78,15 +78,14 @@ DATABASE_URL=sqlite:///database/agenda.db
 
 ## Execução
 
-### Local
+### Windows Nativo (RECOMENDADO)
 
-```bash
-python app.py
+```powershell
+windows\instalar_dependencias.bat
+windows\executar_agenda_windows.bat
 ```
 
-Acesse: http://localhost:5000
-
-### Docker (Linux/WSL2) - RECOMENDADO
+### Docker (Linux/WSL2)
 
 ```bash
 docker-compose up -d
@@ -96,13 +95,6 @@ docker-compose up -d
 
 ```bash
 docker-compose -f docker-compose.windows.yml up -d
-```
-
-### Windows Nativo
-
-```powershell
-windows\instalar_dependencias.bat
-windows\executar_agenda_windows.bat
 ```
 
 ## API

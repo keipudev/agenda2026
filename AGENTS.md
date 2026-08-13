@@ -4,7 +4,8 @@
 - `python app.py` - Iniciar aplicação Flask (http://localhost:5000)
 - `AGENDA_PORT=5001 python app.py` - Porta personalizada
 - `FLASK_DEBUG=1 python app.py` - Modo debug
-- `docker-compose up -d` - Docker Linux/WSL2 (RECOMENDADO)
+- `windows\executar_agenda_windows.bat` - Windows nativo (RECOMENDADO)
+- `docker-compose up -d` - Docker Linux/WSL2
 - `docker-compose -f docker-compose.windows.yml up -d` - Docker Windows
 
 ## Verificação
