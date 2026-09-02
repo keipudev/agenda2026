@@ -1,29 +1,36 @@
 # Comandos para Agenda 2026
 
-## Execução
-- `python app.py` - Iniciar aplicação Flask (http://localhost:5000)
+## Execucao
+
+- `python scripts/run.py` - Iniciar aplicacao Flask (http://localhost:5000)
+- `python scripts/run.py install` - Instalar dependencias
 - `AGENDA_PORT=5001 python app.py` - Porta personalizada
 - `FLASK_DEBUG=1 python app.py` - Modo debug
-- `windows\executar_agenda_windows.bat` - Windows nativo (RECOMENDADO)
+- `python scripts/run.py` - Windows nativo, WSL2 e Linux
 - `docker-compose up -d` - Docker Linux/WSL2
 - `docker-compose -f docker-compose.windows.yml up -d` - Docker Windows
 
-## Verificação
+## Verificacao
+
 - `python -m py_compile app.py` - Verificar sintaxe
 - `pytest` - Executar testes
-- `black .` - Formatar código
+- `black .` - Formatar codigo
 - `flake8 .` - Lint
 
-## Dependências
-- `pip install -r requirements.txt` - Instalar dependências
+## Dependencias
+
+- `pip install -r requirements.txt` - Instalar dependencias
 - `pip freeze > requirements.txt` - Atualizar lockfile
 
 ## Banco de dados
+
 - Banco criado automaticamente em `database/agenda.db`
 - Para resetar: delete `database/agenda.db` e reinicie a app
 
-## Variáveis de ambiente
+## Variaveis de ambiente
+
 Copie `.env.example` para `.env` e ajuste:
+
 ```bash
 FLASK_DEBUG=0
 AGENDA_PORT=5000

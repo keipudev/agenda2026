@@ -1,9 +1,10 @@
 import os
 import json
-from datetime import datetime, timedelta
+import secrets
+from datetime import datetime, timedelta, timezone
 from typing import Optional, List
 
-from flask import Flask, request, jsonify, render_template, render_template
+from flask import Flask, request, jsonify, render_template
 from flask_cors import CORS
 from dotenv import load_dotenv
 from pydantic import BaseModel, ValidationError, Field
@@ -14,11 +15,17 @@ load_dotenv()
 
 
 class Config:
-    SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-key")
+    SECRET_KEY = os.getenv("SECRET_KEY", secrets.token_hex(32))
     DEBUG = os.getenv("FLASK_DEBUG", "0") == "1"
-    SQLALCHEMY_DATABASE_URI = os.getenv("DATABASE_URL", "sqlite:///database/agenda.db")
+    SQLALCHEMY_DATABASE_URI = os.getenv(
+        "DATABASE_URL",
+        f"sqlite:///{os.path.join(os.getcwd(), 'database', 'agenda.db')}",
+    )
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     AGENDA_PORT = int(os.getenv("AGENDA_PORT", 5000))
+    ALLOWED_ORIGINS = os.getenv(
+        "ALLOWED_ORIGINS", "http://localhost:5000,http://localhost:3000"
+    ).split(",")
 
 
 db = SQLAlchemy()
@@ -33,13 +40,17 @@ class Evento(db.Model):
     descricao = db.Column(db.Text, default="")
     duracao = db.Column(db.Integer, default=1)
     cor = db.Column(db.String(7), default="#3498db")
-    criado_em = db.Column(db.DateTime, default=datetime.utcnow)
+    criado_em = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
     def to_dict(self) -> dict:
         return {
-            "id": self.id, "data": self.data, "hora": self.hora,
-            "titulo": self.titulo, "descricao": self.descricao,
-            "duracao": self.duracao, "cor": self.cor,
+            "id": self.id,
+            "data": self.data,
+            "hora": self.hora,
+            "titulo": self.titulo,
+            "descricao": self.descricao,
+            "duracao": self.duracao,
+            "cor": self.cor,
             "criado_em": self.criado_em.isoformat() if self.criado_em else None,
         }
 
@@ -56,14 +67,19 @@ class Rotina(db.Model):
     data_inicio = db.Column(db.String(10), nullable=False)
     data_fim = db.Column(db.String(10), nullable=True)
     ativa = db.Column(db.Integer, default=1)
-    criado_em = db.Column(db.DateTime, default=datetime.utcnow)
+    criado_em = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
     def to_dict(self) -> dict:
         return {
-            "id": self.id, "titulo": self.titulo, "descricao": self.descricao,
-            "cor": self.cor, "dias_semana": json.loads(self.dias_semana),
-            "hora_inicio": self.hora_inicio, "duracao": self.duracao,
-            "data_inicio": self.data_inicio, "data_fim": self.data_fim,
+            "id": self.id,
+            "titulo": self.titulo,
+            "descricao": self.descricao,
+            "cor": self.cor,
+            "dias_semana": json.loads(self.dias_semana),
+            "hora_inicio": self.hora_inicio,
+            "duracao": self.duracao,
+            "data_inicio": self.data_inicio,
+            "data_fim": self.data_fim,
             "ativa": self.ativa,
             "criado_em": self.criado_em.isoformat() if self.criado_em else None,
         }
@@ -72,9 +88,9 @@ class Rotina(db.Model):
 class EventoSchema(BaseModel):
     data: str = Field(..., description="Data no formato YYYY-MM-DD")
     hora: str = Field(..., description="Hora no formato HH:MM")
-    titulo: str = Field(..., min_length=1, description="Ttulo do evento")
-    descricao: Optional[str] = Field(default="", description="Descrio do evento")
-    duracao: int = Field(default=1, ge=1, description="Durao em horas")
+    titulo: str = Field(..., min_length=1, description="Titulo do evento")
+    descricao: Optional[str] = Field(default="", description="Descricao do evento")
+    duracao: int = Field(default=1, ge=1, description="Duracao em horas")
     cor: Optional[str] = Field(default="#3498db", description="Cor em hexadecimal")
 
 
@@ -82,11 +98,15 @@ class RotinaSchema(BaseModel):
     titulo: str = Field(..., min_length=1)
     descricao: Optional[str] = Field(default="")
     cor: Optional[str] = Field(default="#4285f4")
-    dias_semana: List[int] = Field(..., description="Lista de dias da semana (0=Dom, 6=Sb)")
+    dias_semana: List[int] = Field(
+        ..., description="Lista de dias da semana (0=Dom, 6=Sab)"
+    )
     hora_inicio: str = Field(..., description="Hora no formato HH:MM")
     duracao: int = Field(default=2, ge=1)
     data_inicio: str = Field(..., description="Data no formato YYYY-MM-DD")
-    data_fim: Optional[str] = Field(default=None, description="Data no formato YYYY-MM-DD")
+    data_fim: Optional[str] = Field(
+        default=None, description="Data no formato YYYY-MM-DD"
+    )
     ativa: int = Field(default=1)
 
 
@@ -94,16 +114,28 @@ class RotinaBatchSchema(BaseModel):
     rotinas: List[RotinaSchema]
 
 
-def create_app() -> Flask:
+def create_app(test_config=None) -> Flask:
     app = Flask(__name__)
     app.config.from_object(Config)
 
-    CORS(app)
+    if test_config:
+        app.config.update(test_config)
+
+    db_uri = app.config.get("SQLALCHEMY_DATABASE_URI", "")
+    if db_uri.startswith("sqlite:///"):
+        db_path = db_uri[len("sqlite:///") :]
+        if not os.path.isabs(db_path):
+            app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///" + os.path.abspath(
+                db_path
+            )
+
+    CORS(app, origins=Config.ALLOWED_ORIGINS)
     db.init_app(app)
 
     @app.before_request
     def ensure_db():
         try:
+            os.makedirs("database", exist_ok=True)
             db.create_all()
         except Exception:
             pass
@@ -112,6 +144,12 @@ def create_app() -> Flask:
     register_error_handlers(app)
 
     return app
+
+
+def init_db():
+    with create_app().app_context():
+        os.makedirs("database", exist_ok=True)
+        db.create_all()
 
 
 def register_routes(app: Flask):
@@ -135,7 +173,11 @@ def register_routes(app: Flask):
             for rotina in rotinas:
                 try:
                     data_inicio = datetime.strptime(rotina.data_inicio, "%Y-%m-%d")
-                    data_fim = datetime.strptime(rotina.data_fim, "%Y-%m-%d") if rotina.data_fim else datetime(2026, 12, 31)
+                    data_fim = (
+                        datetime.strptime(rotina.data_fim, "%Y-%m-%d")
+                        if rotina.data_fim
+                        else datetime(2026, 12, 31)
+                    )
                 except (ValueError, TypeError):
                     continue
 
@@ -156,7 +198,9 @@ def register_routes(app: Flask):
                 if hoje.month == 12:
                     ultimo_dia = datetime(hoje.year, 12, 31)
                 else:
-                    ultimo_dia = datetime(hoje.year, hoje.month + 1, 1) - timedelta(days=1)
+                    ultimo_dia = datetime(hoje.year, hoje.month + 1, 1) - timedelta(
+                        days=1
+                    )
 
                 dias = []
                 num_dias = (ultimo_dia - primeiro_dia).days + 1
@@ -175,12 +219,14 @@ def register_routes(app: Flask):
                         dia_info["tem_rotinas"] = True
                     dias.append(dia_info)
 
-                meses.append({
-                    "mes": primeiro_dia.strftime("%Y-%m"),
-                    "nome_mes": primeiro_dia.strftime("%B"),
-                    "ano": hoje.year,
-                    "dias": dias,
-                })
+                meses.append(
+                    {
+                        "mes": primeiro_dia.strftime("%Y-%m"),
+                        "nome_mes": primeiro_dia.strftime("%B"),
+                        "ano": hoje.year,
+                        "dias": dias,
+                    }
+                )
 
                 hoje = ultimo_dia + timedelta(days=1)
 
@@ -194,7 +240,7 @@ def register_routes(app: Flask):
         try:
             datetime.strptime(data, "%Y-%m-%d")
         except ValueError:
-            return jsonify({"error": "Formato de data invlido. Use YYYY-MM-DD"}), 400
+            return jsonify({"error": "Formato de data invalido. Use YYYY-MM-DD"}), 400
 
         try:
             eventos = Evento.query.filter_by(data=data).order_by(Evento.hora).all()
@@ -208,9 +254,9 @@ def register_routes(app: Flask):
         try:
             payload = EventoSchema(**request.get_json(force=True))
         except ValidationError as e:
-            return jsonify({"error": "Dados invlidos", "details": e.errors()}), 400
+            return jsonify({"error": "Dados invalidos", "details": e.errors()}), 400
         except Exception:
-            return jsonify({"error": "Corpo da requisio invlido"}), 400
+            return jsonify({"error": "Corpo da requisicao invalido"}), 400
 
         try:
             evento = Evento(
@@ -231,11 +277,11 @@ def register_routes(app: Flask):
 
     @app.put("/api/evento/<int:id>")
     def atualizar_evento(id: int):
-        evento = Evento.query.get_or_404(id, description="Evento no encontrado")
+        evento = Evento.query.get_or_404(id, description="Evento nao encontrado")
 
         data = request.get_json(force=True) or {}
         if "titulo" not in data or not str(data["titulo"]).strip():
-            return jsonify({"error": "Ttulo  obrigatrio"}), 400
+            return jsonify({"error": "Titulo e obrigatorio"}), 400
 
         try:
             evento.titulo = data.get("titulo", evento.titulo)
@@ -251,7 +297,7 @@ def register_routes(app: Flask):
 
     @app.delete("/api/evento/<int:id>")
     def deletar_evento(id: int):
-        evento = Evento.query.get_or_404(id, description="Evento no encontrado")
+        evento = Evento.query.get_or_404(id, description="Evento nao encontrado")
         try:
             db.session.delete(evento)
             db.session.commit()
@@ -275,7 +321,7 @@ def register_routes(app: Flask):
         try:
             datetime.strptime(data, "%Y-%m-%d")
         except ValueError:
-            return jsonify({"error": "Data invlida"}), 400
+            return jsonify({"error": "Data invalida"}), 400
 
         try:
             rotinas = Rotina.query.filter_by(ativa=1).all()
@@ -289,7 +335,11 @@ def register_routes(app: Flask):
                     continue
 
                 data_inicio = datetime.strptime(r["data_inicio"], "%Y-%m-%d")
-                data_fim = datetime.strptime(r["data_fim"], "%Y-%m-%d") if r["data_fim"] else None
+                data_fim = (
+                    datetime.strptime(r["data_fim"], "%Y-%m-%d")
+                    if r["data_fim"]
+                    else None
+                )
 
                 if data_fim and data_ref > data_fim:
                     continue
@@ -308,9 +358,9 @@ def register_routes(app: Flask):
         try:
             payload = RotinaSchema(**request.get_json(force=True))
         except ValidationError as e:
-            return jsonify({"error": "Dados invlidos", "details": e.errors()}), 400
+            return jsonify({"error": "Dados invalidos", "details": e.errors()}), 400
         except Exception:
-            return jsonify({"error": "Corpo da requisio invlido"}), 400
+            return jsonify({"error": "Corpo da requisicao invalido"}), 400
 
         try:
             rotina = Rotina(
@@ -334,17 +384,19 @@ def register_routes(app: Flask):
 
     @app.put("/api/rotina/<int:id>")
     def atualizar_rotina(id: int):
-        rotina = Rotina.query.get_or_404(id, description="Rotina no encontrada")
+        rotina = Rotina.query.get_or_404(id, description="Rotina nao encontrada")
 
         data = request.get_json(force=True) or {}
         if "titulo" not in data or not str(data["titulo"]).strip():
-            return jsonify({"error": "Ttulo  obrigatrio"}), 400
+            return jsonify({"error": "Titulo e obrigatorio"}), 400
 
         try:
             rotina.titulo = data.get("titulo", rotina.titulo)
             rotina.descricao = data.get("descricao", rotina.descricao)
             rotina.cor = data.get("cor", rotina.cor)
-            rotina.dias_semana = json.dumps(data.get("dias_semana", json.loads(rotina.dias_semana)))
+            rotina.dias_semana = json.dumps(
+                data.get("dias_semana", json.loads(rotina.dias_semana))
+            )
             rotina.hora_inicio = data.get("hora_inicio", rotina.hora_inicio)
             rotina.duracao = data.get("duracao", rotina.duracao)
             rotina.data_inicio = data.get("data_inicio", rotina.data_inicio)
@@ -359,7 +411,7 @@ def register_routes(app: Flask):
 
     @app.delete("/api/rotina/<int:id>")
     def deletar_rotina(id: int):
-        rotina = Rotina.query.get_or_404(id, description="Rotina no encontrada")
+        rotina = Rotina.query.get_or_404(id, description="Rotina nao encontrada")
         try:
             db.session.delete(rotina)
             db.session.commit()
@@ -385,9 +437,9 @@ def register_routes(app: Flask):
         try:
             payload = RotinaBatchSchema(**request.get_json(force=True))
         except ValidationError as e:
-            return jsonify({"error": "Dados invlidos", "details": e.errors()}), 400
+            return jsonify({"error": "Dados invalidos", "details": e.errors()}), 400
         except Exception:
-            return jsonify({"error": "Corpo da requisio invlido"}), 400
+            return jsonify({"error": "Corpo da requisicao invalido"}), 400
 
         try:
             ids_criados = []
@@ -415,7 +467,7 @@ def register_routes(app: Flask):
 
     @app.post("/api/rotina/<int:id>/gerar")
     def gerar_eventos_rotina(id: int):
-        rotina = Rotina.query.get_or_404(id, description="Rotina no encontrada")
+        rotina = Rotina.query.get_or_404(id, description="Rotina nao encontrada")
 
         body = request.get_json(force=True) or {}
         data_inicio = body.get("data_inicio", rotina.data_inicio)
@@ -425,7 +477,7 @@ def register_routes(app: Flask):
             inicio = datetime.strptime(data_inicio, "%Y-%m-%d")
             fim = datetime.strptime(data_fim, "%Y-%m-%d")
         except ValueError:
-            return jsonify({"error": "Data invlida"}), 400
+            return jsonify({"error": "Data invalida"}), 400
 
         try:
             count = 0
@@ -465,11 +517,11 @@ def register_routes(app: Flask):
 def register_error_handlers(app: Flask):
     @app.errorhandler(404)
     def not_found(e):
-        return jsonify({"error": "Recurso no encontrado"}), 404
+        return jsonify({"error": "Recurso nao encontrado"}), 404
 
     @app.errorhandler(405)
     def method_not_allowed(e):
-        return jsonify({"error": "Mtodo no permitido"}), 405
+        return jsonify({"error": "Metodo nao permitido"}), 405
 
     @app.errorhandler(500)
     def internal_error(e):

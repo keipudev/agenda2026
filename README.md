@@ -1,116 +1,101 @@
-# Agenda API 2026
-
-![Python](https://img.shields.io/badge/python-3.11%2B-blue)
-![Flask](https://img.shields.io/badge/flask-2.3-green)
-![SQLAlchemy](https://img.shields.io/badge/SQLAlchemy-3.1-red)
-![Docker](https://img.shields.io/badge/docker-ready-blue)
-![License](https://img.shields.io/badge/license-MIT-green)
+# Agenda 2026
 
 API REST em Flask para gerenciamento de agenda pessoal com suporte a eventos e rotinas.
 
-## Tech Stack
+## Stack
 
-| Camada | Tecnologia |
-|--------|-----------|
-| **Framework** | Flask 2.3 |
-| **ORM** | SQLAlchemy 3.1 |
-| **Banco** | SQLite (dev) / PostgreSQL (prod) |
-| **API Docs** | OpenAPI-ready |
-| **Validação** | Pydantic v2 |
-| **CORS** | Flask-CORS |
-| **Servidor** | Gunicorn (prod) / Flask dev server |
-| **Container** | Docker + Docker Compose |
-| **Qualidade** | pytest, black, flake8 |
+- Flask 2.3
+- SQLAlchemy 3.1
+- SQLite
+- Pydantic v2
+- Flask-CORS
+- Gunicorn (Linux) / Waitress (Windows)
+- Docker + Docker Compose
 
 ## Estrutura
 
 ```
 agenda2026/
-├── app.py                 # Aplicação Flask + Models + Routes
-├── requirements.txt       # Dependências Python
-├── .env.example          # Variáveis de ambiente (template)
-├── Dockerfile            # Imagem de produção
-├── docker-compose.yml    # Orquestração Linux
-├── docker-compose.windows.yml  # Orquestração Windows
-├── README.md             # Documentação
-├── AGENTS.md             # Comandos do projeto
-├── GUIA_RAPIDO.md        # Guia rápido
-├── ARQUITETURA.md        # Arquitetura
+├── app.py                      # Aplicacao Flask + Models + Routes
+├── test_app.py                 # Testes automatizados
+├── requirements.txt            # Dependencias Python
+├── .env.example                # Variaveis de ambiente (template)
+├── .env                        # Variaveis de ambiente (nao versionado)
+├── Dockerfile                  # Imagem de producao Linux
+├── Dockerfile.windows          # Imagem de producao Windows
+├── docker-compose.yml          # Orquestracao Linux/WSL2
+├── docker-compose.windows.yml  # Orquestracao Windows
+├── nginx.conf                  # Reverse proxy + TLS
+├── templates/
+│   └── index.html              # Interface web
 ├── static/
 │   ├── style.css
 │   └── script.js
-├── templates/
-│   └── index.html
-└── database/
-    └── agenda.db         # SQLite (gerado automaticamente)
+├── database/
+│   └── agenda.db               # SQLite (gerado automaticamente, nao versionado)
+└── windows/                    # Scripts de execucao Windows
 ```
 
-## Setup
+## Execucao
 
-### Pré-requisitos
-
-- Python 3.11+
-- pip
-- Docker (opcional)
-
-### Instalação local
+### Windows (nativo ou WSL)
 
 ```bash
-python -m venv .venv
-source .venv/bin/activate  # Linux/Mac
-.venv\Scripts\activate     # Windows
-
-pip install -r requirements.txt
-cp .env.example .env
-python app.py
+python scripts/run.py
 ```
 
-### Variáveis de ambiente
-
-Copie `.env.example` para `.env` e ajuste:
+### Linux
 
 ```bash
-FLASK_DEBUG=0
-AGENDA_PORT=5000
-SECRET_KEY=super-secret-key
-DATABASE_URL=sqlite:///database/agenda.db
-```
-
-## Execução
-
-### Windows Nativo (RECOMENDADO)
-
-```powershell
-windows\instalar_dependencias.bat
-windows\executar_agenda_windows.bat
+python scripts/run.py
 ```
 
 ### Docker (Linux/WSL2)
 
 ```bash
-docker-compose up -d
+docker-compose down -v
+docker-compose up --build -d
 ```
 
 ### Docker (Windows Containers)
 
 ```bash
-docker-compose -f docker-compose.windows.yml up -d
+docker-compose -f docker-compose.windows.yml down -v
+docker-compose -f docker-compose.windows.yml up --build -d
+```
+
+## Configuracao
+
+Copie `.env.example` para `.env` e ajuste as variaveis:
+
+```bash
+FLASK_DEBUG=0
+AGENDA_PORT=5000
+SECRET_KEY=<chave-forte-aqui>
+DATABASE_URL=sqlite:///database/agenda.db
+ALLOWED_ORIGINS=http://localhost:5000,http://localhost:3000
+```
+
+Gere uma chave segura com:
+
+```bash
+python -c "import secrets; print(secrets.token_hex(32))"
 ```
 
 ## API
 
 ### Eventos
 
-| Método | Endpoint | Descrição |
+| Metodo | Endpoint | Descricao |
 |--------|----------|-----------|
-| GET | `/api/eventos/<data>` | Lista eventos do dia |
+| GET | `/api/eventos/<data>` | Lista eventos do dia (YYYY-MM-DD) |
 | POST | `/api/evento` | Cria evento |
 | PUT | `/api/evento/<id>` | Atualiza evento |
 | DELETE | `/api/evento/<id>` | Remove evento |
 
 ### Rotinas
 
-| Método | Endpoint | Descrição |
+| Metodo | Endpoint | Descricao |
 |--------|----------|-----------|
 | GET | `/api/rotinas` | Lista todas as rotinas |
 | GET | `/api/rotinas/<data>` | Rotinas do dia |
@@ -121,14 +106,14 @@ docker-compose -f docker-compose.windows.yml up -d
 | POST | `/api/rotinas/batch` | Cria rotinas em lote |
 | POST | `/api/rotina/<id>/gerar` | Gera eventos a partir de rotina |
 
-### Utilitários
+### Utilidades
 
-| Método | Endpoint | Descrição |
+| Metodo | Endpoint | Descricao |
 |--------|----------|-----------|
-| GET | `/api/meses` | Estrutura de calendário 2026 |
+| GET | `/api/meses` | Estrutura de calendario 2026 |
 | GET | `/health` | Health check |
 
-### Exemplo de request
+### Exemplo
 
 ```bash
 curl -X POST http://localhost:5000/api/evento \
@@ -136,50 +121,20 @@ curl -X POST http://localhost:5000/api/evento \
   -d '{
     "data": "2026-06-07",
     "hora": "14:00",
-    "titulo": "Reunião",
+    "titulo": "Reuniao",
     "descricao": "Sprint review",
     "duracao": 2,
     "cor": "#4285f4"
   }'
 ```
 
-## Modelos
+## Testes
 
-### Evento
-
-```python
-{
-    "id": 1,
-    "data": "2026-06-07",
-    "hora": "14:00",
-    "titulo": "Reunião",
-    "descricao": "Sprint review",
-    "duracao": 2,
-    "cor": "#4285f4",
-    "criado_em": "2026-06-07T14:00:00"
-}
+```bash
+pytest -v
 ```
 
-### Rotina
-
-```python
-{
-    "id": 1,
-    "titulo": "Academia",
-    "descricao": "Treino de segunda, quarta e sexta",
-    "cor": "#34a853",
-    "dias_semana": [1, 3, 5],
-    "hora_inicio": "07:00",
-    "duracao": 2,
-    "data_inicio": "2026-01-01",
-    "data_fim": "2026-12-31",
-    "ativa": 1
-}
-```
-
-## Desenvolvimento
-
-### Qualidade de código
+## Qualidade
 
 ```bash
 black .
@@ -187,68 +142,30 @@ flake8 .
 pytest
 ```
 
-### Testes
-
-```bash
-pytest -v
-pytest --cov=app
-```
-
 ## Docker
-
-### Build
-
-```bash
-docker-compose build
-```
-
-### Logs
 
 ```bash
 docker-compose logs -f
-```
-
-### Parar
-
-```bash
 docker-compose down
 ```
 
-## Deploy
-
-Para produção, recomenda-se:
-
-1. Usar PostgreSQL ao invés de SQLite
-2. Configurar `SECRET_KEY` forte
-3. Rodar atrás de Nginx ou Cloudflare
-4. Usar HTTPS
-5. Configurar backup automático do banco
+Resetar banco:
 
 ```bash
-# Exemplo com PostgreSQL
-export DATABASE_URL=postgresql://user:pass@host:5432/agenda2026
+docker-compose down -v
+docker-compose up --build -d
+```
+
+## Producao
+
+Recomenda-se usar PostgreSQL no lugar de SQLite, configurar `SECRET_KEY` forte, rodar atras de Nginx ou Cloudflare com HTTPS e configurar backup automatico do banco.
+
+Exemplo com Gunicorn:
+
+```bash
 gunicorn --bind 0.0.0.0:5000 --workers 4 app:app
 ```
 
-## Comandos Úteis
-
-| Comando | Descrição |
-|---------|-----------|
-| `python app.py` | Executa em modo desenvolvimento |
-| `AGENDA_PORT=5001 python app.py` | Porta customizada |
-| `python -m py_compile app.py` | Verifica sintaxe |
-| `pytest` | Executa testes |
-| `black .` | Formata código |
-| `flake8 .` | Lint |
-
-## Roadmap
-
-- [ ] Autenticação de usuários
-- [ ] Exportação PDF/CSV
-- [ ] Notificações
-- [ ] Sincronização com Google Calendar
-- [ ] API versionamento (/api/v1)
-
-## Licença
+## Licenca
 
 MIT

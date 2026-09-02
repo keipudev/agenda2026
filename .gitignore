@@ -38,8 +38,13 @@ Thumbs.db
 # Node
 node_modules/
 
+# SSL certificates (regenerate with script)
+certs/
+
 # Kilo config
 .kilo/
+
+# Postman
 .postman/
 
 # Git

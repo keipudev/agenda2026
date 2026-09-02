@@ -1,5 +1,5 @@
 ﻿# escape=`
-FROM python:3.11-windowsservercore-ltsc2022
+FROM python:3.12-windowsservercore-ltsc2022
 
 WORKDIR /app
 
@@ -16,5 +16,6 @@ ENV FLASK_APP=app.py
 ENV FLASK_DEBUG=0
 ENV AGENDA_PORT=5000
 ENV DATABASE_URL=sqlite:///C:/app/database/agenda.db
+ENV ALLOWED_ORIGINS=http://localhost:5000,http://localhost:3000
 
 CMD ["waitress-serve", "--port=5000", "--host=0.0.0.0", "app:app"]
