@@ -2,6 +2,8 @@
 
 API REST em Flask para gerenciamento de agenda pessoal com suporte a eventos e rotinas.
 
+Este projeto está sendo desenvolvido com vibe coding.
+
 ## Stack
 
 - Flask 2.3
