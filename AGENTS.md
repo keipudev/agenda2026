@@ -6,9 +6,7 @@
 - `python scripts/run.py install` - Instalar dependencias
 - `AGENDA_PORT=5001 python app.py` - Porta personalizada
 - `FLASK_DEBUG=1 python app.py` - Modo debug
-- `python scripts/run.py` - Windows nativo, WSL2 e Linux
-- `docker-compose up -d` - Docker Linux/WSL2
-- `docker-compose -f docker-compose.windows.yml up -d` - Docker Windows
+- `docker-compose up -d` - Docker
 
 ## Verificacao
 

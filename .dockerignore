@@ -40,14 +40,6 @@ node_modules/
 
 # Kilo config
 .kilo/
-.postman/
-
-# Scripts locais
-executar_agenda.bat
-sqllite.bat
-
-# Windows native runner
-windows/
 
 # Git
 .git/

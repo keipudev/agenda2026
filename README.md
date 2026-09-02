@@ -9,7 +9,7 @@ API REST em Flask para gerenciamento de agenda pessoal com suporte a eventos e r
 - SQLite
 - Pydantic v2
 - Flask-CORS
-- Gunicorn (Linux) / Waitress (Windows)
+- Gunicorn
 - Docker + Docker Compose
 
 ## Estrutura
@@ -21,11 +21,8 @@ agenda2026/
 ├── requirements.txt            # Dependencias Python
 ├── .env.example                # Variaveis de ambiente (template)
 ├── .env                        # Variaveis de ambiente (nao versionado)
-├── Dockerfile                  # Imagem de producao Linux
-├── Dockerfile.windows          # Imagem de producao Windows
-├── docker-compose.yml          # Orquestracao Linux/WSL2
-├── docker-compose.windows.yml  # Orquestracao Windows
-├── nginx.conf                  # Reverse proxy + TLS
+├── Dockerfile                  # Imagem de producao
+├── docker-compose.yml          # Orquestracao
 ├── templates/
 │   └── index.html              # Interface web
 ├── static/
@@ -33,35 +30,30 @@ agenda2026/
 │   └── script.js
 ├── database/
 │   └── agenda.db               # SQLite (gerado automaticamente, nao versionado)
-└── windows/                    # Scripts de execucao Windows
+└── scripts/
+    ├── run.py                  # Inicializador
+    └── setup.py                # Instalador de dependencias
 ```
 
 ## Execucao
 
-### Windows (nativo ou WSL)
+### Local
 
 ```bash
 python scripts/run.py
 ```
 
-### Linux
+Instale dependencias com:
 
 ```bash
-python scripts/run.py
+python scripts/run.py install
 ```
 
-### Docker (Linux/WSL2)
+### Docker
 
 ```bash
 docker-compose down -v
 docker-compose up --build -d
-```
-
-### Docker (Windows Containers)
-
-```bash
-docker-compose -f docker-compose.windows.yml down -v
-docker-compose -f docker-compose.windows.yml up --build -d
 ```
 
 ## Configuracao
