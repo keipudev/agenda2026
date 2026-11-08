@@ -241,7 +241,7 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 18px;
+    margin-bottom: 10px;
     flex-wrap: wrap;
     gap: 10px;
 }
@@ -1294,11 +1294,14 @@ body {
 .duration-spinner {
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     gap: 4px;
     background: var(--event-bg);
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
     padding: 4px 6px;
+    width: 100%;
+    box-sizing: border-box;
     transition: border-color 0.2s, box-shadow 0.2s;
 }
 
@@ -1317,7 +1320,9 @@ body {
 .spinner-group {
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     gap: 2px;
+    width: 100%;
 }
 
 .spinner-btn {
