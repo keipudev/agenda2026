@@ -1,4 +1,4 @@
-# Agenda 2026
+# Agenda Keipu
 
 API REST em Flask para gerenciamento de agenda pessoal com suporte a eventos e rotinas, com interface web responsiva e modo escuro.
 
@@ -17,7 +17,7 @@ Este projeto está preparado para ser usado e mantido por outras pessoas. Siga a
 ## Estrutura
 
 ```
-agenda2026/
+agenda-keipu/
 ├── app.py                      # Aplicacao Flask + Models + Rotas da API
 ├── test_app.py                 # Testes automatizados (unittest)
 ├── requirements.txt            # Dependencias Python (producao + dev)
@@ -47,8 +47,8 @@ Python 3.8+ e necessario. Recomendado Python 3.12.
 ### 2. Clone o repositorio
 
 ```bash
-git clone https://github.com/keipudev/agenda2026.git
-cd agenda2026
+git clone https://github.com/keipudev/agenda-keipu.git
+cd agenda-keipu
 ```
 
 ### 3. Configure as variaveis de ambiente
@@ -110,7 +110,7 @@ docker compose logs -f
 docker compose down -v
 ```
 
-O banco de dados e persistido no volume Docker `agenda2026-db`.
+O banco de dados e persistido no volume Docker `agenda-keipu-db`.
 
 ## Configuracao (.env)
 

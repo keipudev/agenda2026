@@ -1322,7 +1322,6 @@ body {
     align-items: center;
     justify-content: center;
     gap: 2px;
-    width: 100%;
 }
 
 .spinner-btn {
@@ -1376,7 +1375,7 @@ body {
     width: 42px;
     text-align: center;
     border: none;
-    background: transparent;
+    background: var(--event-bg);
     font-size: 13px;
     font-family: inherit;
     color: var(--text-primary);

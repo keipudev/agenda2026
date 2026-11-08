@@ -44,7 +44,7 @@ def install_dependencies():
 
 
 def run_app():
-    print("Iniciando Agenda 2026...")
+    print("Iniciando Agenda Keipu...")
     print(f"Acesse: http://localhost:{os.getenv('AGENDA_PORT', '5000')}")
     print("Pressione Ctrl+C para parar.")
     subprocess.run([sys.executable, "app.py"], cwd=BASE_DIR, check=True)

@@ -39,7 +39,7 @@ class TestAgendaApp(unittest.TestCase):
     def test_index_page(self):
         response = self.client.get("/")
         self.assertEqual(response.status_code, 200)
-        self.assertIn(b"Agenda 2026", response.data)
+        self.assertIn(b"Agenda Keipu", response.data)
 
     def test_get_meses(self):
         response = self.client.get("/api/meses")

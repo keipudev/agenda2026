@@ -3,7 +3,7 @@
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: agenda2026
+    container_name: agenda-keipu
     restart: unless-stopped
     environment:
       - FLASK_DEBUG=0
@@ -11,7 +11,7 @@
       - DATABASE_URL=sqlite:///database/agenda.db
       - ALLOWED_ORIGINS=http://localhost:5000,http://localhost:3000
     volumes:
-      - agenda2026-db:/app/database
+      - agenda-keipu-db:/app/database
     ports:
       - "5000:5000"
     healthcheck:
@@ -22,5 +22,5 @@
       start_period: 10s
 
 volumes:
-  agenda2026-db:
-    name: agenda2026-db
+  agenda-keipu-db:
+    name: agenda-keipu-db
