@@ -132,13 +132,9 @@ def create_app(test_config=None) -> Flask:
     CORS(app, origins=Config.ALLOWED_ORIGINS)
     db.init_app(app)
 
-    @app.before_request
-    def ensure_db():
-        try:
-            os.makedirs("database", exist_ok=True)
-            db.create_all()
-        except Exception:
-            pass
+    os.makedirs("database", exist_ok=True)
+    with app.app_context():
+        db.create_all()
 
     register_routes(app)
     register_error_handlers(app)
@@ -283,11 +279,27 @@ def register_routes(app: Flask):
         if "titulo" not in data or not str(data["titulo"]).strip():
             return jsonify({"error": "Titulo e obrigatorio"}), 400
 
+        if "data" in data:
+            try:
+                datetime.strptime(str(data["data"]), "%Y-%m-%d")
+            except ValueError:
+                return jsonify({"error": "Formato de data invalido. Use YYYY-MM-DD"}), 400
+
+        if "hora" in data:
+            try:
+                datetime.strptime(str(data["hora"]), "%H:%M")
+            except ValueError:
+                return jsonify({"error": "Formato de hora invalido. Use HH:MM"}), 400
+
         try:
             evento.titulo = data.get("titulo", evento.titulo)
             evento.descricao = data.get("descricao", evento.descricao)
             evento.duracao = data.get("duracao", evento.duracao)
             evento.cor = data.get("cor", evento.cor)
+            if "data" in data:
+                evento.data = data["data"]
+            if "hora" in data:
+                evento.hora = data["hora"]
             db.session.commit()
             return jsonify({"status": "atualizado"})
         except Exception as e:

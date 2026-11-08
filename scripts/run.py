@@ -22,7 +22,7 @@ def create_database():
 
 
 def install_dependencies():
-    print("Instalando dependencias...")
+    print("Instalando dependencias de producao...")
     subprocess.run(
         [sys.executable, "-m", "pip", "install", "--upgrade", "pip"],
         cwd=BASE_DIR,
@@ -33,6 +33,14 @@ def install_dependencies():
         cwd=BASE_DIR,
         check=True,
     )
+    print("Instalando dependencias de desenvolvimento...")
+    dev_req = BASE_DIR / "requirements-dev.txt"
+    if dev_req.exists():
+        subprocess.run(
+            [sys.executable, "-m", "pip", "install", "-r", "requirements-dev.txt"],
+            cwd=BASE_DIR,
+            check=True,
+        )
     print("Dependencias instaladas.")
 
 
