@@ -283,7 +283,10 @@ def register_routes(app: Flask):
             try:
                 datetime.strptime(str(data["data"]), "%Y-%m-%d")
             except ValueError:
-                return jsonify({"error": "Formato de data invalido. Use YYYY-MM-DD"}), 400
+                return (
+                    jsonify({"error": "Formato de data invalido. Use YYYY-MM-DD"}),
+                    400,
+                )
 
         if "hora" in data:
             try:

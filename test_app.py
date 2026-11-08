@@ -5,7 +5,7 @@ import sys
 import tempfile
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import app as agenda_app
+import app as agenda_app  # noqa: E402
 
 
 class TestAgendaApp(unittest.TestCase):
